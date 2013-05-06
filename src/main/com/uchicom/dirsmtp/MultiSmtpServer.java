@@ -58,7 +58,7 @@ public class MultiSmtpServer extends SingleSmtpServer implements Runnable {
         try {
             server = new ServerSocket();
             server.setReuseAddress(true);
-            server.bind(new InetSocketAddress(8025), 10);
+            server.bind(new InetSocketAddress(port), back);
             serverQueue.add(server);
             while (true) {
                 Socket socket = server.accept();
