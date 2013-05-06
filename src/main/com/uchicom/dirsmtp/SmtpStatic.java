@@ -1,7 +1,7 @@
 /**
  * (c) 2012 uchicom
  */
-package com.uchicom.smtp;
+package com.uchicom.dirsmtp;
 
 /**
  * @author Uchiyama Shigeki
