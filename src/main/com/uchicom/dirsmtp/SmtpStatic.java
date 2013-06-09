@@ -22,10 +22,10 @@ public class SmtpStatic {
 	// No such user here
 
 	// SMTPコマンド正規表現
-	/** EHELOの正規表現(大文字小文字後続スペース) */
-	public static String REG_EXP_EHELO = "^[Ee][Hh][Ee][Ll][Oo] *$";
+	/** EHLOの正規表現(大文字小文字後続スペース) */
+	public static String REG_EXP_EHLO = "^ *[Ee][Hh][Ll][Oo] +[^ ]* *$";
 	/** HELOの正規表現(大文字小文字後続スペース) */
-	public static String REG_EXP_HELO = "^[Hh][Ee][Ll][Oo] *$";
+	public static String REG_EXP_HELO = "^ *[Hh][Ee][Ll][Oo] +[^ ]* *$";
 	/** MAIL FROM:アドレスの正規表現(大文字小文字後続スペース) */
 	public static String REG_EXP_MAIL_FROM = "^[Mm][Aa][Ii][Ll] [Ff][Rr][Oo][Mm]:.* *$";
 	/** RCPT TO:アドレスの正規表現(大文字小文字後続スペース) */

@@ -5,6 +5,8 @@ package com.uchicom.dirsmtp;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -13,8 +15,11 @@ import java.io.PrintStream;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.channels.FileChannel;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -29,6 +34,7 @@ public class SingleSmtpServer {
     
 	protected String hostName;
 	protected File file;
+	protected List<File> rcptList = new ArrayList<File>();
     
 	/**
 	 * アドレスとメールユーザーフォルダの格納フォルダを指定する
@@ -117,7 +123,11 @@ public class SingleSmtpServer {
 			boolean bData = false;
 			String helo = null;
 			String mailFrom = null;
-			File userBox = null;
+			File rcptBox = new File(file, "@" + Thread.currentThread().getId());
+			if (!rcptBox.exists()) {
+			    rcptBox.mkdirs();
+			}
+			File mailFile = null;
 			//HELO
 			//MAIL FROM:
 			//RCPT TO:
@@ -132,7 +142,18 @@ public class SingleSmtpServer {
 						//メッセージ終了
 						writer.write(".\r\n");
 						writer.close();
-						ps.print("250 OK \r\n");
+						//メッセージコピー処理
+						try {
+    						for (File userBox : rcptList) {
+    						    SingleSmtpServer.copyFile(mailFile, new File(userBox, mailFile.getName()));
+    						}
+    						mailFile.delete();
+						} catch (Exception e) {
+						    e.printStackTrace();
+						}
+						mailFile = null;
+						rcptList.clear();
+						ps.print(SmtpStatic.RECV_250_OK);
 						bMailFrom = false;
 						bRcptTo = false;
 						bData = false;
@@ -142,9 +163,10 @@ public class SingleSmtpServer {
 						writer.write("\r\n");
 						writer.flush();
 					}
-				} else if (head.startsWith("HELO")) {
+				} else if (!bHelo && (head.matches(SmtpStatic.REG_EXP_EHLO) || head.matches(SmtpStatic.REG_EXP_HELO))) {
 					bHelo = true;
-					helo = head.substring(4).trim();
+					String[] heads = head.split(" +");
+					helo = heads[1];
 					ps.print(SmtpStatic.RECV_250);
 					ps.print(' ');
 					ps.print(hostName + " Hello " + socket.getInetAddress().getHostAddress() + "\r\n");
@@ -174,8 +196,8 @@ public class SingleSmtpServer {
 							for (File box : file.listFiles()) {
 								if (box.isDirectory()) {
 									if (addresses[0].equals(box.getName())) {
-										userBox = box;
 										checkOK = true;
+										rcptList.add(box);
 									}
 								}
 							}
@@ -200,7 +222,7 @@ public class SingleSmtpServer {
 					}
 				} else if (head.matches(SmtpStatic.REG_EXP_DATA)) {
 					if (bRcptTo) {
-						File mailFile = new File(userBox, helo + "_" + mailFrom + "~" + socket.getInetAddress().getHostAddress() + "_" + format.format(new Date(System.currentTimeMillis())));
+						mailFile = new File(rcptBox, helo + "_" + mailFrom + "~" + socket.getInetAddress().getHostAddress() + "_" + format.format(new Date(System.currentTimeMillis())));
 						mailFile.createNewFile();
 						writer = new OutputStreamWriter(new FileOutputStream(mailFile));
 						ps.print(SmtpStatic.RECV_354);
@@ -250,6 +272,40 @@ public class SingleSmtpServer {
             } catch (IOException e) {
                 e.printStackTrace();
             }
+        }
+	}
+
+	/**
+	 * ファイルコピー処理
+	 * @param from
+	 * @param to
+	 */
+	public static void copyFile(File from, File to) throws IOException {
+	    FileChannel ic = null;
+	    FileChannel oc = null;
+	    try {
+            ic = new FileInputStream(from).getChannel();
+            oc = new FileOutputStream(to).getChannel();
+            ic.transferTo(0, ic.size(), oc);
+        } catch (IOException e) {
+            throw e;
+        } finally {
+            if (ic != null)
+                try {
+                    ic.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } finally {
+                    ic = null;
+                }
+            if (oc != null)
+                try {
+                    oc.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } finally {
+                    oc = null;
+                }
         }
 	}
 }
