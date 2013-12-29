@@ -6,7 +6,6 @@ package com.uchicom.dirsmtp;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -109,6 +108,8 @@ public class SingleSmtpServer {
 	
 	public void smtp(Socket socket) {
 		System.out.println(System.currentTimeMillis() + ":" + String.valueOf( socket.getRemoteSocketAddress()));
+		
+		File rcptBox = null;
 		try {
 			BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 			PrintStream ps = new PrintStream(socket.getOutputStream());
@@ -123,7 +124,7 @@ public class SingleSmtpServer {
 			boolean bData = false;
 			String helo = null;
 			String mailFrom = null;
-			File rcptBox = new File(file, "@" + Thread.currentThread().getId());
+			rcptBox = new File(file, "@" + Thread.currentThread().getId());
 			if (!rcptBox.exists()) {
 			    rcptBox.mkdirs();
 			}
@@ -261,6 +262,10 @@ public class SingleSmtpServer {
 				} finally {
 					socket = null;
 				}
+			}
+			//フォルダ削除
+			if (rcptBox != null) {
+			    rcptBox.delete();
 			}
 		}
 	}
