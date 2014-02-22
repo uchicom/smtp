@@ -236,7 +236,9 @@ public class SingleSmtpServer {
 					}
 				
 				} else if (head.matches(SmtpStatic.REG_EXP_QUIT)) {
-					ps.print("221\r\n");
+					ps.print("221");
+					ps.print(hostName);
+					ps.print("\r\n");
 					ps.flush();
 					break;
 				} else if ("".equals(head)) {
@@ -253,7 +255,7 @@ public class SingleSmtpServer {
 			e.printStackTrace();
 		} catch (Throwable e) {
 			e.printStackTrace();
-		} finally {
+		} finally { 
 			if (socket != null) {
 				try {
 					socket.close();
