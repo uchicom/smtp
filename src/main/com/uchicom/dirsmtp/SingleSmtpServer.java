@@ -40,30 +40,10 @@ public class SingleSmtpServer {
 	 * @param args
 	 */
 	public static void main (String[] args) {
-		if (args.length != 3) {
-			System.out.println("args.length != 2");
-			return;
-		}
-		//メールフォルダ格納フォルダ
-		File dir = new File(args[0]);
-		if (!dir.exists() || !dir.isDirectory()) {
-			System.out.println("mailbox directory is not found.");
-			return;
-		}
-		//メール
-		String hostName = args[1];
-
-        // ポート
-        int port = 8025;
-        if (args.length > 2) {
-            port = Integer.parseInt(args[2]);
-        } 
-        // 接続待ち数
-        int back = 10;
-        if (args.length == 3) {
-            back = Integer.parseInt(args[3]);
+        Parameter param = new Parameter(args);
+        if (param.init(System.err)) {
+            execute(param);
         }
-		execute(hostName, dir, port, back);
 	}
 	
 	/**
@@ -73,13 +53,13 @@ public class SingleSmtpServer {
 	 * @param port
 	 * @param back
 	 */
-	private static void execute(String hostName, File file, int port, int back) {
+	private static void execute(Parameter param) {
 	    ServerSocket server = null;
         try {
             server = new ServerSocket();
             server.setReuseAddress(true);
-            server.bind(new InetSocketAddress(port), back);
-            SingleSmtpServer smtpServer = new SingleSmtpServer(hostName, file);
+            server.bind(new InetSocketAddress(param.getPort()), param.getBack());
+            SingleSmtpServer smtpServer = new SingleSmtpServer(param.getHostName(), param.getBase());
             serverQueue.add(server);
             while (true) {
                 Socket socket = server.accept();

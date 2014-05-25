@@ -3,6 +3,8 @@
  */
 package com.uchicom.dirsmtp;
 
+import java.io.File;
+
 /**
  * @author Uchiyama Shigeki
  * 
@@ -34,4 +36,15 @@ public class SmtpStatic {
 	public static String REG_EXP_DATA = "^[Dd][Aa][Tt][Aa] *$";
 	/** QUITの正規表現(大文字小文字後続スペース) */
 	public static String REG_EXP_QUIT = "^[Qq][Uu][Ii][Tt] *$";
+	
+
+    //初期設定
+    /** デフォルトメールボックスディレクトリ */
+    public static File DEFAULT_MAILBOX = new File("mailbox");
+    /** デフォルト待ち受けポート番号 */
+    public static int DEFAULT_PORT = 8025;
+    /** デフォルト接続待ち数 */
+    public static int DEFAULT_BACK = 10;
+    /** デフォルトスレッドプール数 */
+    public static int DEFAULT_POOL = 10;
 }
