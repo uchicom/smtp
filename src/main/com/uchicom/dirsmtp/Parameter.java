@@ -28,8 +28,8 @@ public class Parameter {
      * @return
      */
     public boolean init(PrintStream ps) {
-        if (args.length != 3) {
-            System.out.println("args.length != 2");
+        if (args.length < 3) {
+            System.out.println("args.length >= 3");
             return false;
         }
         //メールフォルダ格納フォルダ

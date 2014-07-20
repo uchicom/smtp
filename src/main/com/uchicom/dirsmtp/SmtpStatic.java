@@ -36,6 +36,8 @@ public class SmtpStatic {
 	public static String REG_EXP_DATA = "^[Dd][Aa][Tt][Aa] *$";
 	/** QUITの正規表現(大文字小文字後続スペース) */
 	public static String REG_EXP_QUIT = "^[Qq][Uu][Ii][Tt] *$";
+	/** RSETの正規表現(大文字小文字後続スペース) */
+	public static String REG_EXP_RSET = "^[Rr][Ss][Ee][Tt] *$";
 	
 
     //初期設定

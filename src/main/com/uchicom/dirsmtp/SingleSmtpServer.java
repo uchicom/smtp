@@ -121,7 +121,6 @@ public class SingleSmtpServer {
 				if (bData) { 
 					if (".".equals(head)) {
 						//メッセージ終了
-						writer.write(".\r\n");
 						writer.close();
 						//メッセージコピー処理
 						try {
@@ -152,6 +151,15 @@ public class SingleSmtpServer {
 					ps.print(' ');
 					ps.print(hostName + " Hello " + socket.getInetAddress().getHostAddress() + "\r\n");
 					ps.flush();
+					bMailFrom = false;
+					bRcptTo = false;
+					bData = false;
+				} else if (head.matches(SmtpStatic.REG_EXP_RSET)) {
+					ps.print(SmtpStatic.RECV_250_OK);
+					ps.flush();
+					bMailFrom = false;
+					bRcptTo = false;
+					bData = false;
 				} else if (head.matches(SmtpStatic.REG_EXP_MAIL_FROM)) {
 					if (bHelo) {
 						mailFrom = head.substring(10).trim().replaceAll("[<>]", "");
@@ -203,7 +211,7 @@ public class SingleSmtpServer {
 					}
 				} else if (head.matches(SmtpStatic.REG_EXP_DATA)) {
 					if (bRcptTo) {
-						mailFile = new File(rcptBox, helo + "_" + mailFrom + "~" + socket.getInetAddress().getHostAddress() + "_" + format.format(new Date(System.currentTimeMillis())));
+						mailFile = new File(rcptBox, helo.replaceAll(":", "_") + "_" + mailFrom + "~" + socket.getInetAddress().getHostAddress().replaceAll(":", "_") + "_" + format.format(new Date(System.currentTimeMillis())));
 						mailFile.createNewFile();
 						writer = new OutputStreamWriter(new FileOutputStream(mailFile));
 						ps.print(SmtpStatic.RECV_354);
