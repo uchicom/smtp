@@ -3,11 +3,9 @@
  */
 package com.uchicom.dirsmtp;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
-import java.net.Socket;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -15,38 +13,36 @@ import java.util.concurrent.Executors;
  * @author Uchiyama Shigeki
  *
  */
-public class PoolSmtpServer extends SingleSmtpServer implements Runnable {
+public class PoolSmtpServer extends SingleSmtpServer {
 
-    protected Socket socket;
     /**
      * アドレスとメールユーザーフォルダの格納フォルダを指定する
      * @param args
      */
     public static void main (String[] args) {
-        Parameter param = new Parameter(args);
-        if (param.init(System.err)) {
-            execute(param);
+        SmtpParameter parameter = new SmtpParameter(args);
+        if (parameter.init(System.err)) {
+            execute(parameter);
         }
     }
-    
-    public PoolSmtpServer(String hostName, File file, Socket socket) {
-        super(hostName, file);
-        this.socket = socket;
-    }
-    private static void execute(Parameter param) {
+
+    private static void execute(SmtpParameter parameter) {
         ExecutorService exec = null;
         ServerSocket server = null;
         try {
             server = new ServerSocket();
             server.setReuseAddress(true);
-            server.bind(new InetSocketAddress(param.getPort()), param.getBack());
+            server.bind(new InetSocketAddress(parameter.getPort()), parameter.getBacklog());
             serverQueue.add(server);
 
-            exec = Executors.newFixedThreadPool(param.getPool());
+            exec = Executors.newFixedThreadPool(parameter.getPool());
             while (true) {
-                
-                Socket socket = server.accept();
-                exec.execute(new PoolSmtpServer(param.getHostName(), param.getBase(), socket));
+                final SmtpProcess process = new SmtpProcess(parameter, server.accept());
+                exec.execute(new Runnable() {
+                	public void run() {
+                		process.execute();
+                	}
+                });
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -64,14 +60,6 @@ public class PoolSmtpServer extends SingleSmtpServer implements Runnable {
                 exec.shutdownNow();
             }
         }
-    }
-    
-    /* (non-Javadoc)
-     * @see java.lang.Runnable#run()
-     */
-    @Override
-    public void run() {
-        smtp(socket);
     }
     
 
