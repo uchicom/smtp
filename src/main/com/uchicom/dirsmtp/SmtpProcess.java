@@ -105,7 +105,9 @@ public class SmtpProcess {
 						init();
 					} else {
 						// メッセージ本文
-						SmtpUtil.recieveLine(ps, line);
+						writer.write(line);
+						writer.write("\r\n");
+						writer.flush();
 					}
 				} else if (!bHelo
 						&& (SmtpUtil.isEhelo(line) || SmtpUtil.isHelo(line))) {
@@ -196,8 +198,8 @@ public class SmtpProcess {
 				line = br.readLine();
 			}
 
-			socket.getOutputStream().close();
-			socket.getInputStream().close();
+			br.close();
+			ps.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		} catch (Throwable e) {
