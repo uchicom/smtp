@@ -37,12 +37,16 @@ public class SmtpParameter {
 	 * @return
 	 */
 	public boolean init(PrintStream ps) {
-		if (args.length < 3) {
-			System.out.println("args.length >= 3");
-			return false;
-		}
+        if (args.length < 1) {
+            ps.println("args.length < 1");
+            return false;
+        }
 		// メールフォルダ格納フォルダ
 		base = SmtpStatic.DEFAULT_MAILBOX;
+
+        if (args.length > 1) {
+            base = new File(args[0]);
+        }
 		if (!base.exists() || !base.isDirectory()) {
 			System.out.println("mailbox directory is not found.");
 			return false;
