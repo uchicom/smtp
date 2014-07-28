@@ -9,13 +9,15 @@ import java.nio.channels.FileChannel;
 
 /**
  * SMTPの処理で使用するユーティリティークラス.
+ * 
  * @author shigeki
- *
+ * 
  */
 public class SmtpUtil {
 
 	/**
 	 * コマンドがEHLOかどうかをチェックする.
+	 * 
 	 * @param cmd
 	 * @return
 	 */
@@ -25,6 +27,7 @@ public class SmtpUtil {
 
 	/**
 	 * コマンドがHELOかどうかをチェックする.
+	 * 
 	 * @param cmd
 	 * @return
 	 */
@@ -34,6 +37,7 @@ public class SmtpUtil {
 
 	/**
 	 * コマンドがRSETかどうかをチェックする.
+	 * 
 	 * @param cmd
 	 * @return
 	 */
@@ -43,6 +47,7 @@ public class SmtpUtil {
 
 	/**
 	 * コマンドがMAIL_FROMかどうかをチェックする.
+	 * 
 	 * @param cmd
 	 * @return
 	 */
@@ -52,6 +57,7 @@ public class SmtpUtil {
 
 	/**
 	 * コマンドがRCPT_TOかどうかをチェックする.
+	 * 
 	 * @param cmd
 	 * @return
 	 */
@@ -61,6 +67,7 @@ public class SmtpUtil {
 
 	/**
 	 * コマンドがDATAかどうかをチェックする.
+	 * 
 	 * @param cmd
 	 * @return
 	 */
@@ -70,6 +77,7 @@ public class SmtpUtil {
 
 	/**
 	 * コマンドがQUITかどうかをチェックする.
+	 * 
 	 * @param cmd
 	 * @return
 	 */
@@ -79,6 +87,7 @@ public class SmtpUtil {
 
 	/**
 	 * コマンドがNOOPかどうかをチェックする.
+	 * 
 	 * @param cmd
 	 * @return
 	 */
@@ -88,6 +97,7 @@ public class SmtpUtil {
 
 	/**
 	 * コマンドがVRFYかどうかをチェックする.
+	 * 
 	 * @param cmd
 	 * @return
 	 */
@@ -97,6 +107,7 @@ public class SmtpUtil {
 
 	/**
 	 * コマンドがEXPNかどうかをチェックする.
+	 * 
 	 * @param cmd
 	 * @return
 	 */
@@ -106,6 +117,7 @@ public class SmtpUtil {
 
 	/**
 	 * コマンドがHELPかどうかをチェックする.
+	 * 
 	 * @param cmd
 	 * @return
 	 */
@@ -115,6 +127,7 @@ public class SmtpUtil {
 
 	/**
 	 * ステータス行を出力する.
+	 * 
 	 * @param ps
 	 * @param strings
 	 */
@@ -125,7 +138,6 @@ public class SmtpUtil {
 		ps.print(SmtpStatic.RECV_LINE_END);
 		ps.flush();
 	}
-
 
 	/**
 	 * ファイルコピー処理
@@ -139,7 +151,11 @@ public class SmtpUtil {
 		try {
 			ic = new FileInputStream(from).getChannel();
 			oc = new FileOutputStream(to).getChannel();
-			ic.transferTo(0, ic.size(), oc);
+			long current = 0;
+			long size = ic.size();
+			while (current < size) {
+				current += ic.transferTo(current, size, oc);
+			}
 		} catch (IOException e) {
 			throw e;
 		} finally {

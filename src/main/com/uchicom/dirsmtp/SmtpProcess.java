@@ -188,7 +188,9 @@ public class SmtpProcess {
 				} else if (SmtpUtil.isQuit(line)) {
 					SmtpUtil.recieveLine(ps, "221", parameter.getHostName());
 					break;
-				} else if (line.length() == 0 || SmtpUtil.isNoop(line)) {
+				} else if (SmtpUtil.isNoop(line)) {
+					SmtpUtil.recieveLine(ps, "250");
+				} else if (line.length() == 0) {
 					// 何もしない
 				} else {
 					// 対応コマンドなし
