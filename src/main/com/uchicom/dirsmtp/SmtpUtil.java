@@ -1,3 +1,6 @@
+/**
+ * (c) 2014 uchicom
+ */
 package com.uchicom.dirsmtp;
 
 import java.io.File;
