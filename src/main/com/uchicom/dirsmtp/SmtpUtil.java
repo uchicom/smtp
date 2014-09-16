@@ -151,9 +151,13 @@ public class SmtpUtil {
 	public static void copyFile(File from, File to) throws IOException {
 		FileChannel ic = null;
 		FileChannel oc = null;
+		FileInputStream fi = null;
+		FileOutputStream fo = null;
 		try {
-			ic = new FileInputStream(from).getChannel();
-			oc = new FileOutputStream(to).getChannel();
+			fi = new FileInputStream(from);
+			fo = new FileOutputStream(to);
+			ic = fi.getChannel();
+			oc = fo.getChannel();
 			long current = 0;
 			long size = ic.size();
 			while (current < size) {
@@ -162,7 +166,7 @@ public class SmtpUtil {
 		} catch (IOException e) {
 			throw e;
 		} finally {
-			if (ic != null)
+			if (ic != null) {
 				try {
 					ic.close();
 				} catch (IOException e) {
@@ -170,7 +174,8 @@ public class SmtpUtil {
 				} finally {
 					ic = null;
 				}
-			if (oc != null)
+			}
+			if (oc != null) {
 				try {
 					oc.close();
 				} catch (IOException e) {
@@ -178,6 +183,13 @@ public class SmtpUtil {
 				} finally {
 					oc = null;
 				}
+			}
+			if (fi != null) {
+				fi.close();
+			}
+			if (fo != null) {
+				fo.close();
+			}
 		}
 	}
 }
