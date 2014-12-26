@@ -6,6 +6,8 @@ package com.uchicom.dirsmtp;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -20,6 +22,7 @@ public class SingleSmtpServer {
 	 */
 	protected static Queue<ServerSocket> serverQueue = new ConcurrentLinkedQueue<ServerSocket>();
 
+	protected static Map<String, Integer> rejectMap = new HashMap<String, Integer>();
 	/**
 	 * アドレスとメールユーザーフォルダの格納フォルダを指定する
 	 * 
@@ -49,7 +52,7 @@ public class SingleSmtpServer {
 			serverQueue.add(serverSocket);
 			while (true) {
 				SmtpProcess process = new SmtpProcess(parameter, serverSocket.accept());
-				process.execute();
+				process.execute(rejectMap);
 			}
 		} catch (IOException e) {
 			e.printStackTrace();

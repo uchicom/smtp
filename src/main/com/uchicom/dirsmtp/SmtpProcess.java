@@ -15,6 +15,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 
@@ -38,6 +39,7 @@ public class SmtpProcess {
 	private String mailFrom;
 	private File mailFile;
 	private File rcptBox;
+	private static final int ERROR_COUNT = 3;
 
 	/** 送付先一覧 */
 	private List<File> rcptList = new ArrayList<File>();
@@ -56,18 +58,27 @@ public class SmtpProcess {
 		this.senderAddress = socket.getInetAddress().getHostAddress();
 	}
 
+	public void execute() {
+		execute(null);
+	}
 	/**
 	 * SMTP処理を実行
 	 * 
 	 * @throws IOException
 	 */
-	public void execute() {
+	public void execute(Map<String, Integer> rejectMap) {
 
 		System.out.println(System.currentTimeMillis() + ":"
 				+ String.valueOf(senderAddress));
 		BufferedReader br = null;
 		PrintStream ps = null;
 		try {
+			//転送はしないので３回チャレンジしたサーバは除外する.
+			if (rejectMap != null && rejectMap.containsKey(senderAddress)) {
+				if (rejectMap.get(senderAddress).intValue() >= ERROR_COUNT) {
+					return;
+				}
+			}
 			br = new BufferedReader(new InputStreamReader(
 					socket.getInputStream()));
 			ps = new PrintStream(socket.getOutputStream());
@@ -162,6 +173,13 @@ public class SmtpProcess {
 						} else {
 							// エラーホストが違う
 							SmtpUtil.recieveLine(ps, "500");
+							if (rejectMap != null) {
+								if (rejectMap.containsKey(senderAddress)) {
+									rejectMap.put(senderAddress, rejectMap.get(senderAddress) + 1);
+								} else {
+									rejectMap.put(senderAddress, Integer.valueOf(1));
+								}
+							}
 						}
 					} else {
 						// エラー500

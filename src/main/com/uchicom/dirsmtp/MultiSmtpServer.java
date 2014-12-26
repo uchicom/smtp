@@ -38,7 +38,7 @@ public class MultiSmtpServer extends SingleSmtpServer {
 						server.accept());
 				new Thread() {
 					public void run() {
-						process.execute();
+						process.execute(rejectMap);
 					}
 				}.start();
 			}
