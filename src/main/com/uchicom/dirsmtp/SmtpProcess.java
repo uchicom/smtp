@@ -18,9 +18,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 
+ *
  * @author shigeki
- * 
+ *
  */
 public class SmtpProcess {
 
@@ -46,7 +46,7 @@ public class SmtpProcess {
 
 	/**
 	 * コンストラクタ.
-	 * 
+	 *
 	 * @param parameter
 	 * @param socket
 	 * @throws IOException
@@ -63,7 +63,7 @@ public class SmtpProcess {
 	}
 	/**
 	 * SMTP処理を実行
-	 * 
+	 *
 	 * @throws IOException
 	 */
 	public void execute(Map<String, Integer> rejectMap) {
@@ -194,7 +194,8 @@ public class SmtpProcess {
 								+ senderAddress.replaceAll(":", "_")
 								+ "_"
 								+ format.format(new Date(System
-										.currentTimeMillis())));
+										.currentTimeMillis()))
+								+ ".eml");
 						mailFile.createNewFile();
 						writer = new OutputStreamWriter(new FileOutputStream(
 								mailFile));
@@ -207,7 +208,7 @@ public class SmtpProcess {
 				} else if (SmtpUtil.isHelp(line)) {
 					SmtpUtil.recieveLine(ps, "250");
 				} else if (SmtpUtil.isQuit(line)) {
-					SmtpUtil.recieveLine(ps, "221", parameter.getHostName());
+					SmtpUtil.recieveLine(ps, "221 ", parameter.getHostName());
 					break;
 				} else if (SmtpUtil.isNoop(line)) {
 					SmtpUtil.recieveLine(ps, "250");
