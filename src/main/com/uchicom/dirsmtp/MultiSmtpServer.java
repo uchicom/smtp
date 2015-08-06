@@ -8,37 +8,42 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 
 /**
- * @author Uchiyama Shigeki
- * 
+ * @author uchicom: Shigeki Uchiyama
+ *
  */
 public class MultiSmtpServer extends SingleSmtpServer {
 
+	public MultiSmtpServer(SmtpParameter parameter) {
+		super(parameter);
+	}
+
 	/**
 	 * アドレスとメールユーザーフォルダの格納フォルダを指定する
-	 * 
+	 *
 	 * @param args
 	 */
 	public static void main(String[] args) {
 		SmtpParameter parameter = new SmtpParameter(args);
 		if (parameter.init(System.err)) {
-			execute(parameter);
+			MultiSmtpServer server = new MultiSmtpServer(parameter);
+			server.execute();
 		}
 	}
 
-	private static void execute(SmtpParameter parameter) {
+	public void execute() {
 		ServerSocket server = null;
 		try {
 			server = new ServerSocket();
 			server.setReuseAddress(true);
 			server.bind(new InetSocketAddress(parameter.getPort()),
 					parameter.getBacklog());
-			serverQueue.add(server);
+			this.serverSocket = server;
 			while (true) {
 				final SmtpProcess process = new SmtpProcess(parameter,
 						server.accept());
 				new Thread() {
 					public void run() {
-						process.execute(rejectMap);
+						process.execute(rejectMap, System.out);
 					}
 				}.start();
 			}

@@ -12,15 +12,15 @@ import java.nio.channels.FileChannel;
 
 /**
  * SMTPの処理で使用するユーティリティークラス.
- * 
- * @author shigeki
- * 
+ *
+ * @author uchicom: Shigeki Uchiyama
+ *
  */
 public class SmtpUtil {
 
 	/**
 	 * コマンドがEHLOかどうかをチェックする.
-	 * 
+	 *
 	 * @param cmd
 	 * @return
 	 */
@@ -30,7 +30,7 @@ public class SmtpUtil {
 
 	/**
 	 * コマンドがHELOかどうかをチェックする.
-	 * 
+	 *
 	 * @param cmd
 	 * @return
 	 */
@@ -40,7 +40,7 @@ public class SmtpUtil {
 
 	/**
 	 * コマンドがRSETかどうかをチェックする.
-	 * 
+	 *
 	 * @param cmd
 	 * @return
 	 */
@@ -50,7 +50,7 @@ public class SmtpUtil {
 
 	/**
 	 * コマンドがMAIL_FROMかどうかをチェックする.
-	 * 
+	 *
 	 * @param cmd
 	 * @return
 	 */
@@ -60,7 +60,7 @@ public class SmtpUtil {
 
 	/**
 	 * コマンドがRCPT_TOかどうかをチェックする.
-	 * 
+	 *
 	 * @param cmd
 	 * @return
 	 */
@@ -70,7 +70,7 @@ public class SmtpUtil {
 
 	/**
 	 * コマンドがDATAかどうかをチェックする.
-	 * 
+	 *
 	 * @param cmd
 	 * @return
 	 */
@@ -80,7 +80,7 @@ public class SmtpUtil {
 
 	/**
 	 * コマンドがQUITかどうかをチェックする.
-	 * 
+	 *
 	 * @param cmd
 	 * @return
 	 */
@@ -90,7 +90,7 @@ public class SmtpUtil {
 
 	/**
 	 * コマンドがNOOPかどうかをチェックする.
-	 * 
+	 *
 	 * @param cmd
 	 * @return
 	 */
@@ -100,7 +100,7 @@ public class SmtpUtil {
 
 	/**
 	 * コマンドがVRFYかどうかをチェックする.
-	 * 
+	 *
 	 * @param cmd
 	 * @return
 	 */
@@ -110,7 +110,7 @@ public class SmtpUtil {
 
 	/**
 	 * コマンドがEXPNかどうかをチェックする.
-	 * 
+	 *
 	 * @param cmd
 	 * @return
 	 */
@@ -120,7 +120,7 @@ public class SmtpUtil {
 
 	/**
 	 * コマンドがHELPかどうかをチェックする.
-	 * 
+	 *
 	 * @param cmd
 	 * @return
 	 */
@@ -130,7 +130,7 @@ public class SmtpUtil {
 
 	/**
 	 * ステータス行を出力する.
-	 * 
+	 *
 	 * @param ps
 	 * @param strings
 	 */
@@ -144,7 +144,7 @@ public class SmtpUtil {
 
 	/**
 	 * ファイルコピー処理
-	 * 
+	 *
 	 * @param from
 	 * @param to
 	 */

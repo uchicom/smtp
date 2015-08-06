@@ -5,7 +5,6 @@ package com.uchicom.dirsmtp;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
@@ -18,8 +17,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
+ * SMTP処理クラス.
  *
- * @author shigeki
+ * @author uchicom: Shigeki Uchiyama
  *
  */
 public class SmtpProcess {
@@ -37,12 +37,13 @@ public class SmtpProcess {
 	private String senderAddress;
 	private String helo;
 	private String mailFrom;
-	private File mailFile;
-	private File rcptBox;
+	private Mail mail;
+
+	private List<MailBox> boxList = new ArrayList<MailBox>();
 	private static final int ERROR_COUNT = 3;
 
 	/** 送付先一覧 */
-	private List<File> rcptList = new ArrayList<File>();
+	private List<MailBox> rcptList = new ArrayList<MailBox>();
 
 	/**
 	 * コンストラクタ.
@@ -59,16 +60,17 @@ public class SmtpProcess {
 	}
 
 	public void execute() {
-		execute(null);
+		execute(null, System.out);
 	}
+
 	/**
 	 * SMTP処理を実行
 	 *
 	 * @throws IOException
 	 */
-	public void execute(Map<String, Integer> rejectMap) {
+	public void execute(Map<String, Integer> rejectMap, PrintStream logStream) {
 
-		System.out.println(System.currentTimeMillis() + ":"
+		logStream.println(System.currentTimeMillis() + ":"
 				+ String.valueOf(senderAddress));
 		BufferedReader br = null;
 		PrintStream ps = null;
@@ -82,11 +84,6 @@ public class SmtpProcess {
 			br = new BufferedReader(new InputStreamReader(
 					socket.getInputStream()));
 			ps = new PrintStream(socket.getOutputStream());
-			rcptBox = new File(parameter.getBase(), "@"
-					+ Thread.currentThread().getId());
-			if (!rcptBox.exists()) {
-				rcptBox.mkdirs();
-			}
 			SmtpUtil.recieveLine(ps, "220 ", parameter.getHostName(), " SMTP");
 			String line = br.readLine();
 			OutputStreamWriter writer = null;
@@ -98,22 +95,19 @@ public class SmtpProcess {
 			// RCPT TO:
 			// DATAの順で処理する
 			while (line != null) {
-				System.out.println("[" + line + "]");
+				logStream.println("[" + line + "]");
 				if (bData) {
 					if (".".equals(line)) {
 						// メッセージ終了
 						writer.close();
 						// メッセージコピー処理
 						try {
-							for (File userBox : rcptList) {
-								SmtpUtil.copyFile(mailFile, new File(userBox,
-										mailFile.getName()));
-							}
-							mailFile.delete();
+							mail.copy(boxList);
+							mail.delete();
 						} catch (Exception e) {
 							e.printStackTrace();
 						}
-						mailFile = null;
+						mail = null;
 						rcptList.clear();
 						SmtpUtil.recieveLine(ps, SmtpStatic.RECV_250_OK);
 						init();
@@ -138,7 +132,7 @@ public class SmtpProcess {
 					if (bHelo) {
 						mailFrom = line.substring(10).trim()
 								.replaceAll("[<>]", "");
-						System.out.println(mailFrom);
+						logStream.println(mailFrom);
 						SmtpUtil.recieveLine(ps, SmtpStatic.RECV_250_OK);
 						bMailFrom = true;
 					} else {
@@ -150,16 +144,24 @@ public class SmtpProcess {
 						String[] heads = line.split(":");
 						String address = heads[1].trim().replaceAll("[<>]", "");
 						String[] addresses = address.split("@");
-						System.out.println(addresses[0]);
-						System.out.println(addresses[1]);
+						logStream.println(addresses[0]);
+						logStream.println(addresses[1]);
 						if (addresses[1].equals(parameter.getHostName())) {
 							// 宛先チェック
 							boolean checkOK = false;
-							for (File box : parameter.getBase().listFiles()) {
-								if (box.isDirectory()) {
-									if (addresses[0].equals(box.getName())) {
-										checkOK = true;
-										rcptList.add(box);
+							if (parameter.isMemory()) {
+								for (String user : parameter.getUsers()) {
+									boxList.add(new MailBox(parameter.getMailList(user)));
+									checkOK = true;
+								}
+
+							} else {
+								for (File box : parameter.getBase().listFiles()) {
+									if (box.isDirectory()) {
+										if (addresses[0].equals(box.getName())) {
+											checkOK = true;
+											boxList.add(new MailBox(box));
+										}
 									}
 								}
 							}
@@ -168,7 +170,7 @@ public class SmtpProcess {
 								bRcptTo = true;
 							} else {
 								// エラーユーザー存在しない
-								SmtpUtil.recieveLine(ps, "500");
+								SmtpUtil.recieveLine(ps, "550 Failure reply");
 							}
 						} else {
 							// エラーホストが違う
@@ -187,18 +189,22 @@ public class SmtpProcess {
 					}
 				} else if (SmtpUtil.isData(line)) {
 					if (bRcptTo) {
-						mailFile = new File(rcptBox, helo.replaceAll(":", "_")
-								+ "_"
-								+ mailFrom
-								+ "~"
-								+ senderAddress.replaceAll(":", "_")
-								+ "_"
-								+ format.format(new Date(System
-										.currentTimeMillis()))
-								+ ".eml");
-						mailFile.createNewFile();
-						writer = new OutputStreamWriter(new FileOutputStream(
-								mailFile));
+						if (parameter.isMemory()) {
+							mail = new MemoryMail();
+						} else {
+
+							mail = new FileMail(new File("@rcpt", helo.replaceAll(":", "_")
+									+ "_"
+									+ mailFrom
+									+ "~"
+									+ senderAddress.replaceAll(":", "_")
+									+ "_"
+									+ format.format(new Date())
+									+ "_"
+									+ Thread.currentThread().getId()
+									+ ".eml"));
+						}
+						writer = mail.getWriter();
 						SmtpUtil.recieveLine(ps, SmtpStatic.RECV_354);
 						bData = true;
 					} else {
@@ -237,10 +243,6 @@ public class SmtpProcess {
 				} finally {
 					socket = null;
 				}
-			}
-			// フォルダ削除
-			if (rcptBox != null) {
-				rcptBox.delete();
 			}
 		}
 	}

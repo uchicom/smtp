@@ -10,30 +10,35 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * @author Uchiyama Shigeki
+ * @author uchicom: Shigeki Uchiyama
  *
  */
 public class PoolSmtpServer extends SingleSmtpServer {
 
-    /**
+    public PoolSmtpServer(SmtpParameter parameter) {
+		super(parameter);
+	}
+
+	/**
      * アドレスとメールユーザーフォルダの格納フォルダを指定する
      * @param args
      */
     public static void main (String[] args) {
         SmtpParameter parameter = new SmtpParameter(args);
         if (parameter.init(System.err)) {
-            execute(parameter);
+        	PoolSmtpServer server = new PoolSmtpServer(parameter);
+			server.execute();
         }
     }
 
-    private static void execute(SmtpParameter parameter) {
+    public void execute(SmtpParameter parameter) {
         ExecutorService exec = null;
         ServerSocket server = null;
         try {
             server = new ServerSocket();
             server.setReuseAddress(true);
             server.bind(new InetSocketAddress(parameter.getPort()), parameter.getBacklog());
-            serverQueue.add(server);
+			this.serverSocket = server;
 
             exec = Executors.newFixedThreadPool(parameter.getPool());
             while (true) {
@@ -61,6 +66,6 @@ public class PoolSmtpServer extends SingleSmtpServer {
             }
         }
     }
-    
+
 
 }

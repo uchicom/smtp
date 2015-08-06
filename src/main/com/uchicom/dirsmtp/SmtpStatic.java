@@ -6,8 +6,10 @@ package com.uchicom.dirsmtp;
 import java.io.File;
 
 /**
- * @author Uchiyama Shigeki
- * 
+ * SMTPの定数クラス.
+ *
+ * @author uchicom: Shigeki Uchiyama
+ *
  */
 public class SmtpStatic {
 
@@ -21,7 +23,7 @@ public class SmtpStatic {
 	/** 返却メッセージ(550(失敗応答)) */
 	public static String RECV_550 = "550 ";
 	/** 返却メッセージ(354(中間応答)) */
-	public static String RECV_354 = "354 Enter Mail end With\",\"";
+	public static String RECV_354 = "354 Start mail input; end with \r\n.\r\n";
 
 	// No such user here
 
@@ -51,9 +53,9 @@ public class SmtpStatic {
 
 	// 初期設定
 	/** デフォルトメールボックスディレクトリ */
-	public static File DEFAULT_MAILBOX = new File("mailbox");
+	public static File DEFAULT_MAILBOX = new File("./mailbox");
 	/** デフォルト待ち受けポート番号 */
-	public static int DEFAULT_PORT = 8025;
+	public static int DEFAULT_PORT = 25;
 	/** デフォルト接続待ち数 */
 	public static int DEFAULT_BACK = 10;
 	/** デフォルトスレッドプール数 */

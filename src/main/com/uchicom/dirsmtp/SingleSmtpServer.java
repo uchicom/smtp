@@ -3,69 +3,85 @@
  */
 package com.uchicom.dirsmtp;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
- * @author Uchiyama Shigeki
- * 
+ * @author uchicom: Shigeki Uchiyama
+ *
  */
 public class SingleSmtpServer {
 
 	/**
 	 * 複数のサーバーを実行する場合に格納されるキュー
 	 */
-	protected static Queue<ServerSocket> serverQueue = new ConcurrentLinkedQueue<ServerSocket>();
+	protected ServerSocket serverSocket;
 
 	protected static Map<String, Integer> rejectMap = new HashMap<String, Integer>();
+
+	protected SmtpParameter parameter;
+
 	/**
 	 * アドレスとメールユーザーフォルダの格納フォルダを指定する
-	 * 
+	 *
 	 * @param args
 	 */
 	public static void main(String[] args) {
 		SmtpParameter param = new SmtpParameter(args);
 		if (param.init(System.err)) {
-			execute(param);
+			SingleSmtpServer server = new SingleSmtpServer(param);
+			server.execute();
 		}
 	}
 
+	public SingleSmtpServer(SmtpParameter parameter) {
+		this.parameter = parameter;
+	}
 	/**
 	 * 処理実行.
-	 * 
+	 *
 	 * @param hostName
 	 * @param file
 	 * @param port
 	 * @param back
 	 */
-	private static void execute(SmtpParameter parameter) {
-		ServerSocket serverSocket = null;
-		try {
-			serverSocket = new ServerSocket();
+	public void execute() {
+		try (ServerSocket serverSocket = new ServerSocket()){
 			serverSocket.setReuseAddress(true);
 			serverSocket.bind(new InetSocketAddress(parameter.getPort()), parameter.getBacklog());
-			serverQueue.add(serverSocket);
+			this.serverSocket = serverSocket;
 			while (true) {
 				SmtpProcess process = new SmtpProcess(parameter, serverSocket.accept());
-				process.execute(rejectMap);
+				process.execute(rejectMap, System.out);
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
-		} finally {
-			if (serverSocket != null) {
-				try {
-					serverSocket.close();
-				} catch (Exception e) {
-					e.printStackTrace();
-				} finally {
-					serverSocket = null;
+		}
+	}
+
+	public List<Mail> getMailList(String user) {
+		if (parameter.isMemory()) {
+			return parameter.getMailList(user);
+		} else {
+			List<Mail> mailList = new ArrayList<>();
+			File box = new File(parameter.getBase(), user);
+			if (box.exists()) {
+				for (File file : box.listFiles()) {
+					try {
+						mailList.add(new FileMail(file));
+					} catch (IOException e) {
+						// TODO 自動生成された catch ブロック
+						e.printStackTrace();
+					}
 				}
 			}
+			return mailList;
 		}
 	}
 
@@ -73,10 +89,10 @@ public class SingleSmtpServer {
 	 * シャットダウン処理.
 	 * @param args
 	 */
-	public static void shutdown(String... args) {
-		if (!serverQueue.isEmpty()) {
+	public void shutdown(String... args) {
+		if (serverSocket != null && !serverSocket.isClosed()) {
 			try {
-				serverQueue.poll().close();
+				serverSocket.close();
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
