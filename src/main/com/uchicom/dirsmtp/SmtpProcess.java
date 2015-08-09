@@ -7,8 +7,8 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
 import java.io.PrintStream;
+import java.io.Writer;
 import java.net.Socket;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -74,6 +74,7 @@ public class SmtpProcess {
 				+ String.valueOf(senderAddress));
 		BufferedReader br = null;
 		PrintStream ps = null;
+		Writer writer = null;
 		try {
 			//転送はしないので３回チャレンジしたサーバは除外する.
 			if (rejectMap != null && rejectMap.containsKey(senderAddress)) {
@@ -86,7 +87,6 @@ public class SmtpProcess {
 			ps = new PrintStream(socket.getOutputStream());
 			SmtpUtil.recieveLine(ps, "220 ", parameter.getHostName(), " SMTP");
 			String line = br.readLine();
-			OutputStreamWriter writer = null;
 			// HELO
 			// MAIL FROM:
 			// RCPT TO:
@@ -115,7 +115,6 @@ public class SmtpProcess {
 						// メッセージ本文
 						writer.write(line);
 						writer.write("\r\n");
-						writer.flush();
 					}
 				} else if (!bHelo
 						&& (SmtpUtil.isEhelo(line) || SmtpUtil.isHelo(line))) {
@@ -151,8 +150,11 @@ public class SmtpProcess {
 							boolean checkOK = false;
 							if (parameter.isMemory()) {
 								for (String user : parameter.getUsers()) {
-									boxList.add(new MailBox(parameter.getMailList(user)));
-									checkOK = true;
+									if (addresses[0].equals(user)) {
+										boxList.add(new MailBox(parameter.getMailList(user)));
+										checkOK = true;
+										break;
+									}
 								}
 
 							} else {
@@ -161,6 +163,7 @@ public class SmtpProcess {
 										if (addresses[0].equals(box.getName())) {
 											checkOK = true;
 											boxList.add(new MailBox(box));
+											break;
 										}
 									}
 								}
@@ -171,6 +174,16 @@ public class SmtpProcess {
 							} else {
 								// エラーユーザー存在しない
 								SmtpUtil.recieveLine(ps, "550 Failure reply");
+								if (rejectMap != null) {
+									if (rejectMap.containsKey(senderAddress)) {
+										rejectMap.put(senderAddress, rejectMap.get(senderAddress) + 1);
+									} else {
+										rejectMap.put(senderAddress, Integer.valueOf(1));
+									}
+								}
+								if (rejectMap.get(senderAddress).intValue() >= ERROR_COUNT) {
+									return;
+								}
 							}
 						} else {
 							// エラーホストが違う
@@ -192,8 +205,7 @@ public class SmtpProcess {
 						if (parameter.isMemory()) {
 							mail = new MemoryMail();
 						} else {
-
-							mail = new FileMail(new File("@rcpt", helo.replaceAll(":", "_")
+							mail = new FileMail(new File(new File(parameter.getBase(), "@rcpt"), helo.replaceAll(":", "_")
 									+ "_"
 									+ mailFrom
 									+ "~"
@@ -235,6 +247,25 @@ public class SmtpProcess {
 		} catch (Throwable e) {
 			e.printStackTrace();
 		} finally {
+			if (mail != null) {
+				// メッセージコピー処理
+				try {
+					mail.copy(boxList);
+					mail.delete();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+				mail = null;
+				rcptList.clear();
+			}
+			if (writer != null) {
+				try {
+					writer.close();
+				} catch (IOException e) {
+					// TODO 自動生成された catch ブロック
+					e.printStackTrace();
+				}
+			}
 			if (socket != null) {
 				try {
 					socket.close();
@@ -251,6 +282,7 @@ public class SmtpProcess {
 	 * フラグ初期化.
 	 */
 	private void init() {
+		mail = null;
 		bMailFrom = false;
 		bRcptTo = false;
 		bData = false;

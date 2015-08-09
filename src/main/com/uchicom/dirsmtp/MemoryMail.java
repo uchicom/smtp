@@ -5,6 +5,7 @@ package com.uchicom.dirsmtp;
 
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.util.List;
 import java.util.Map;
 
@@ -22,7 +23,7 @@ public class MemoryMail implements Mail {
 	}
 
 	@Override
-	public OutputStreamWriter getWriter() throws Exception {
+	public Writer getWriter() throws Exception {
 		return new OutputStreamWriter(baos);
 	}
 

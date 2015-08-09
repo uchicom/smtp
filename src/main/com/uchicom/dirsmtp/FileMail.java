@@ -3,10 +3,12 @@
  */
 package com.uchicom.dirsmtp;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.util.List;
 import java.util.Map;
 
@@ -37,9 +39,9 @@ public class FileMail implements Mail {
 	}
 
 	@Override
-	public OutputStreamWriter getWriter() throws Exception {
-		return new OutputStreamWriter(new FileOutputStream(
-				file));
+	public Writer getWriter() throws Exception {
+		return new BufferedWriter(new OutputStreamWriter(new FileOutputStream(
+				file)));
 	}
 
 	@Override

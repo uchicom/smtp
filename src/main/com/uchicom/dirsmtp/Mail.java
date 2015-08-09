@@ -3,7 +3,7 @@
  */
 package com.uchicom.dirsmtp;
 
-import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.util.List;
 import java.util.Map;
 
@@ -21,7 +21,7 @@ public interface Mail {
 	 * @return ライター
 	 * @throws Exception
 	 */
-	public OutputStreamWriter getWriter() throws Exception;
+	public Writer getWriter() throws Exception;
 
 	/**
 	 * メールを削除します.

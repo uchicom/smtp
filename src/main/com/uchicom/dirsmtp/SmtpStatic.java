@@ -23,7 +23,7 @@ public class SmtpStatic {
 	/** 返却メッセージ(550(失敗応答)) */
 	public static String RECV_550 = "550 ";
 	/** 返却メッセージ(354(中間応答)) */
-	public static String RECV_354 = "354 Start mail input; end with \r\n.\r\n";
+	public static String RECV_354 = "354 Start mail input; end with \\r\\n.\\r\\n";
 
 	// No such user here
 
