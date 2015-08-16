@@ -8,7 +8,10 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
 
 /**
  * SMTPの処理で使用するユーティリティークラス.
@@ -18,6 +21,7 @@ import java.nio.channels.FileChannel;
  */
 public class SmtpUtil {
 
+	private static DateTimeFormatter dateTimeFormatter = DateTimeFormatter.RFC_1123_DATE_TIME;
 	/**
 	 * コマンドがEHLOかどうかをチェックする.
 	 *
@@ -148,7 +152,7 @@ public class SmtpUtil {
 	 * @param from
 	 * @param to
 	 */
-	public static void copyFile(File from, File to) throws IOException {
+	public static void copyFile(File from, File to, String mailAddress, String senderHostName, String localHostName) throws IOException {
 		FileChannel ic = null;
 		FileChannel oc = null;
 		FileInputStream fi = null;
@@ -157,7 +161,21 @@ public class SmtpUtil {
 			fi = new FileInputStream(from);
 			fo = new FileOutputStream(to);
 			ic = fi.getChannel();
+			StringBuffer strBuff = new StringBuffer();
+			strBuff.append("Received: from ");
+			strBuff.append(senderHostName);
+			strBuff.append("\r\n");
+			strBuff.append("	by ");
+			strBuff.append(localHostName);
+			strBuff.append("\r\n");
+			strBuff.append("	for <");
+			strBuff.append(mailAddress);
+			strBuff.append(">; ");
+			strBuff.append(dateTimeFormatter.format(OffsetDateTime.now()));
+			strBuff.append("\r\n");
 			oc = fo.getChannel();
+			ByteBuffer buff = ByteBuffer.wrap(strBuff.toString().getBytes());
+			oc.write(buff);
 			long current = 0;
 			long size = ic.size();
 			while (current < size) {

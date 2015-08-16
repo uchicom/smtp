@@ -14,10 +14,15 @@ import java.util.List;
  */
 public class MailBox {
 
+	/** メールアドレス */
+	private String mailAddress;
+	/** ディレクトリ */
 	private File dir;
+	/** メールリスト */
 	private List<Mail> mailList;
 
-	public MailBox(File dir) {
+	public MailBox(String mailAddress, File dir) {
+		this.mailAddress = mailAddress;
 		this.dir = dir;
 
 		if (!dir.exists()) {
@@ -25,7 +30,8 @@ public class MailBox {
 		}
 	}
 
-	public MailBox(List<Mail> mailList) {
+	public MailBox(String mailAddress, List<Mail> mailList) {
+		this.mailAddress = mailAddress;
 		this.mailList = mailList;
 	}
 
@@ -35,6 +41,10 @@ public class MailBox {
 
 	public List<Mail> getMailList() {
 		return mailList;
+	}
+
+	public String getMailAddress() {
+		return mailAddress;
 	}
 
 }

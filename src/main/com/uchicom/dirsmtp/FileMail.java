@@ -61,11 +61,11 @@ public class FileMail implements Mail {
 	}
 
 	@Override
-	public void copy(List<MailBox> boxList) {
+	public void copy(List<MailBox> boxList, String localHostName, String senderHostName) {
 		for (MailBox mailBox : boxList) {
 			try {
 				SmtpUtil.copyFile(file, new File(mailBox.getDir(),
-						file.getName()));
+						file.getName()), mailBox.getMailAddress(), senderHostName, localHostName);
 			} catch (IOException e) {
 				// TODO 自動生成された catch ブロック
 				e.printStackTrace();

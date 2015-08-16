@@ -21,6 +21,9 @@ public class MemoryMail implements Mail {
 
 	public MemoryMail() {
 	}
+	public MemoryMail(String mailAddress, String senderHostName, String localHostName) {
+
+	}
 
 	@Override
 	public Writer getWriter() throws Exception {
@@ -39,10 +42,10 @@ public class MemoryMail implements Mail {
 	}
 
 	@Override
-	public void copy(List<MailBox> boxList) {
+	public void copy(List<MailBox> boxList, String senderHostName, String localHostName) {
 		for (MailBox mailBox : boxList) {
 			synchronized (mailBox.getMailList()) {
-				mailBox.getMailList().add(this);
+				mailBox.getMailList().add(new MemoryMail(mailBox.getMailAddress(), senderHostName, localHostName));
 			}
 		}
 	}

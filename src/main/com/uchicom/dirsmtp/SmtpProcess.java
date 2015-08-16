@@ -102,7 +102,7 @@ public class SmtpProcess {
 						writer.close();
 						// メッセージコピー処理
 						try {
-							mail.copy(boxList);
+							mail.copy(boxList, socket.getLocalAddress().getHostName() ,socket.getInetAddress().getHostName());
 							mail.delete();
 						} catch (Exception e) {
 							e.printStackTrace();
@@ -151,7 +151,7 @@ public class SmtpProcess {
 							if (parameter.isMemory()) {
 								for (String user : parameter.getUsers()) {
 									if (addresses[0].equals(user)) {
-										boxList.add(new MailBox(parameter.getMailList(user)));
+										boxList.add(new MailBox(address, parameter.getMailList(user)));
 										checkOK = true;
 										break;
 									}
@@ -162,7 +162,7 @@ public class SmtpProcess {
 									if (box.isDirectory()) {
 										if (addresses[0].equals(box.getName())) {
 											checkOK = true;
-											boxList.add(new MailBox(box));
+											boxList.add(new MailBox(address, box));
 											break;
 										}
 									}
@@ -250,7 +250,7 @@ public class SmtpProcess {
 			if (mail != null) {
 				// メッセージコピー処理
 				try {
-					mail.copy(boxList);
+					mail.copy(boxList, socket.getInetAddress().getHostName(), socket.getInetAddress().getLocalHost().getHostName());
 					mail.delete();
 				} catch (Exception e) {
 					e.printStackTrace();

@@ -39,7 +39,7 @@ public interface Mail {
 	 *
 	 * @param boxList
 	 */
-	public void copy(List<MailBox> boxList);
+	public void copy(List<MailBox> boxList, String senderHostName, String localHostName);
 
 	/**
 	 * タイトルを取得します.
