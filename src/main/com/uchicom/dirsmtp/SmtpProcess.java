@@ -5,19 +5,23 @@ package com.uchicom.dirsmtp;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.io.Writer;
+import java.net.InetAddress;
 import java.net.Socket;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
 /**
  * SMTP処理クラス.
+ * 送信処理認証後は、他サーバに直接接続してプロキシ―のような処理をする。
  *
  * @author uchicom: Shigeki Uchiyama
  *
@@ -33,17 +37,24 @@ public class SmtpProcess {
 	private boolean bMailFrom;
 	private boolean bRcptTo;
 	private boolean bData;
+	private boolean bAuth;
+	private int authStatus;
 
 	private String senderAddress;
 	private String helo;
 	private String mailFrom;
 	private Mail mail;
+	private String authName;
 
 	private List<MailBox> boxList = new ArrayList<MailBox>();
 	private static final int ERROR_COUNT = 3;
 
 	/** 送付先一覧 */
 	private List<MailBox> rcptList = new ArrayList<MailBox>();
+
+	private long startTime = System.currentTimeMillis();
+
+	private Map<String, Integer> rejectMap;
 
 	/**
 	 * コンストラクタ.
@@ -52,15 +63,16 @@ public class SmtpProcess {
 	 * @param socket
 	 * @throws IOException
 	 */
-	public SmtpProcess(SmtpParameter parameter, Socket socket)
+	public SmtpProcess(SmtpParameter parameter, Socket socket, Map<String, Integer> rejectMap)
 			throws IOException {
 		this.parameter = parameter;
 		this.socket = socket;
 		this.senderAddress = socket.getInetAddress().getHostAddress();
+		this.rejectMap = rejectMap;
 	}
 
 	public void execute() {
-		execute(null, System.out);
+		execute(System.out);
 	}
 
 	/**
@@ -68,7 +80,7 @@ public class SmtpProcess {
 	 *
 	 * @throws IOException
 	 */
-	public void execute(Map<String, Integer> rejectMap, PrintStream logStream) {
+	public void execute(PrintStream logStream) {
 
 		logStream.println(System.currentTimeMillis() + ":"
 				+ String.valueOf(senderAddress));
@@ -96,7 +108,49 @@ public class SmtpProcess {
 			// DATAの順で処理する
 			while (line != null) {
 				logStream.println("[" + line + "]");
-				if (bData) {
+				if (authStatus > 0 && authStatus < 3) {
+					switch (authStatus) {
+					case 1:
+						String name = new String(Base64.getDecoder().decode(line));
+						File dir = new File(parameter.getBase(), name);
+						if (dir.exists() && dir.isDirectory()) {
+							authStatus = 2;
+							authName = name;
+
+							SmtpUtil.recieveLine(ps,
+									SmtpStatic.RECV_334, " UGFzc3dvcmQ6");
+						}
+						break;
+					case 2:
+						String pass = new String(Base64.getDecoder().decode(line));
+						File passwordFile = new File(new File(parameter.getBase(), authName), "pass.txt");
+						if (passwordFile.exists() && passwordFile.isFile()) {
+							try (BufferedReader passReader = new BufferedReader(
+									new InputStreamReader(
+											new FileInputStream(
+													passwordFile)));) {
+								String password = passReader.readLine();
+								while ("".equals(password)) {
+									password = passReader.readLine();
+								}
+								if (pass.equals(password)) {
+
+									SmtpUtil.recieveLine(ps,
+											SmtpStatic.RECV_235);
+									bAuth = true;
+									authStatus = 3;
+								} else {
+									// パスワード不一致エラー
+									SmtpUtil.recieveLine(ps,
+											SmtpStatic.RECV_535);
+									authStatus = 0;
+								}
+							}
+						}
+						break;
+						default:
+					}
+				} else if (bData) {
 					if (".".equals(line)) {
 						// メッセージ終了
 						writer.close();
@@ -121,9 +175,13 @@ public class SmtpProcess {
 					bHelo = true;
 					String[] lines = line.split(" +");
 					helo = lines[1];
-					SmtpUtil.recieveLine(ps, SmtpStatic.RECV_250, " ",
+					SmtpUtil.recieveLine(ps, SmtpStatic.RECV_250, "-",
 							parameter.getHostName(), " Hello ", senderAddress);
+					SmtpUtil.recieveLine(ps, SmtpStatic.RECV_250, " AUTH LOGIN");
 					init();
+				} else if (SmtpUtil.isAuthLogin(line)){
+					authStatus = 1;
+					SmtpUtil.recieveLine(ps, SmtpStatic.RECV_334, " VXNlcm5hbWU6");
 				} else if (SmtpUtil.isRset(line)) {
 					SmtpUtil.recieveLine(ps, SmtpStatic.RECV_250_OK);
 					init();
@@ -185,6 +243,11 @@ public class SmtpProcess {
 									return;
 								}
 							}
+						} else if (bAuth) {
+							//認証済みなので転送OKする
+
+							SmtpUtil.recieveLine(ps, SmtpStatic.RECV_250_OK);
+							bRcptTo = true;
 						} else {
 							// エラーホストが違う
 							SmtpUtil.recieveLine(ps, "500");
@@ -237,6 +300,7 @@ public class SmtpProcess {
 					SmtpUtil.recieveLine(ps,
 							"500 Syntax error, command unrecognized");
 				}
+				startTime = System.currentTimeMillis();
 				line = br.readLine();
 			}
 
@@ -250,7 +314,7 @@ public class SmtpProcess {
 			if (mail != null) {
 				// メッセージコピー処理
 				try {
-					mail.copy(boxList, socket.getInetAddress().getHostName(), socket.getInetAddress().getLocalHost().getHostName());
+					mail.copy(boxList, socket.getInetAddress().getHostName(), InetAddress.getLocalHost().getHostName());
 					mail.delete();
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -286,5 +350,22 @@ public class SmtpProcess {
 		bMailFrom = false;
 		bRcptTo = false;
 		bData = false;
+	}
+
+	public long getStartTime() {
+		return startTime;
+	}
+
+	public void forceClose() {
+		rejectMap.put(senderAddress, rejectMap.get(senderAddress) + 1);
+		if (socket != null && socket.isConnected()) {
+			try {
+				socket.close();
+			} catch (IOException e) {
+				// TODO 自動生成された catch ブロック
+				e.printStackTrace();
+			}
+			socket = null;
+		}
 	}
 }

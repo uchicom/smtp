@@ -66,7 +66,7 @@ public class SmtpParameter {
 		//        }
 		for (int i = 0; i < args.length - 1; i++) {
 			if ("-server".equals(args[i])) {
-				
+
 			} else if ("-dir".equals(args[i])) {// メールフォルダ格納フォルダ
 				base = new File(args[++i]);
 				if (!base.exists() || !base.isDirectory()) {

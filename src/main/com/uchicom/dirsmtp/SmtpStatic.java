@@ -13,9 +13,16 @@ import java.io.File;
  */
 public class SmtpStatic {
 
+	public static String PASSWORD_FILE_NAME = "pass.txt";
 	// SMTP返却メッセージ
 	/** 返却メッセージ(250(成功応答)) */
 	public static String RECV_250 = "250";
+	/** 返却メッセージ(250(成功応答)) */
+	public static String RECV_235 = "235";
+	/** 返却メッセージ(250(成功応答)) */
+	public static String RECV_334 = "334";
+	/** 返却メッセージ(535(認証エラー)) */
+	public static String RECV_535 = "535";
 	/** 返却メッセージ(行終端文字列) */
 	public static String RECV_LINE_END = "\r\n";
 	/** 返却メッセージ(250 OK(成功応答)) */
@@ -50,6 +57,8 @@ public class SmtpStatic {
 	public static String REG_EXP_EXPN = "^[Ee][Xx][Pp][Nn] +[^ ]+ *$";
 	/** HELPの正規表現(大文字小文字後続スペース) */
 	public static String REG_EXP_HELP = "^[Hh][Ee][Ll][Pp] *$";
+	/** AUTH PLAINの正規表現(大文字小文字後続スペース) */
+	public static String REG_EXP_AUTH_LOGIN = "^[Aa][Uu][Tt][Hh] +[Ll][Oo][Gg][Ii][Nn] *$";
 
 	// 初期設定
 	/** デフォルトメールボックスディレクトリ */

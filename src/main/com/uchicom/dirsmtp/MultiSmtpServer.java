@@ -13,6 +13,7 @@ import java.net.ServerSocket;
  */
 public class MultiSmtpServer extends SingleSmtpServer {
 
+
 	public MultiSmtpServer(SmtpParameter parameter) {
 		super(parameter);
 	}
@@ -38,12 +39,25 @@ public class MultiSmtpServer extends SingleSmtpServer {
 			server.bind(new InetSocketAddress(parameter.getPort()),
 					parameter.getBacklog());
 			this.serverSocket = server;
+			Thread thread = new Thread() {
+				public void run() {
+					for (SmtpProcess process : processList) {
+						if (System.currentTimeMillis() - process.getStartTime() > 5 * 1000) {
+							process.forceClose();
+							processList.remove(process);
+						}
+					}
+				}
+			};
+			thread.setDaemon(true);
 			while (true) {
+
 				final SmtpProcess process = new SmtpProcess(parameter,
-						server.accept());
+						server.accept(), rejectMap);
+				processList.add(process);
 				new Thread() {
 					public void run() {
-						process.execute(rejectMap, System.out);
+						process.execute();
 					}
 				}.start();
 			}

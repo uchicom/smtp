@@ -4,6 +4,7 @@
 package com.uchicom.dirsmtp;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.util.List;
@@ -45,7 +46,14 @@ public class MemoryMail implements Mail {
 	public void copy(List<MailBox> boxList, String senderHostName, String localHostName) {
 		for (MailBox mailBox : boxList) {
 			synchronized (mailBox.getMailList()) {
-				mailBox.getMailList().add(new MemoryMail(mailBox.getMailAddress(), senderHostName, localHostName));
+				MemoryMail mail = new MemoryMail(mailBox.getMailAddress(), senderHostName, localHostName);
+				try {
+					mail.baos.write(this.baos.toByteArray());
+				} catch (IOException e) {
+					// TODO 自動生成された catch ブロック
+					e.printStackTrace();
+				}
+				mailBox.getMailList().add(mail);
 			}
 		}
 	}

@@ -42,7 +42,7 @@ public class PoolSmtpServer extends SingleSmtpServer {
 
             exec = Executors.newFixedThreadPool(parameter.getPool());
             while (true) {
-                final SmtpProcess process = new SmtpProcess(parameter, server.accept());
+                final SmtpProcess process = new SmtpProcess(parameter, server.accept(), rejectMap);
                 exec.execute(new Runnable() {
                 	public void run() {
                 		process.execute();

@@ -131,6 +131,9 @@ public class SmtpUtil {
 	public static boolean isHelp(String cmd) {
 		return cmd.matches(SmtpStatic.REG_EXP_HELP);
 	}
+	public static boolean isAuthLogin(String cmd) {
+		return cmd.matches(SmtpStatic.REG_EXP_AUTH_LOGIN);
+	}
 
 	/**
 	 * ステータス行を出力する.

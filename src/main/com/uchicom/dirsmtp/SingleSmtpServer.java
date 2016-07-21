@@ -8,9 +8,10 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * @author uchicom: Shigeki Uchiyama
@@ -23,8 +24,9 @@ public class SingleSmtpServer {
 	 */
 	protected ServerSocket serverSocket;
 
-	protected static Map<String, Integer> rejectMap = new HashMap<String, Integer>();
+	protected static Map<String, Integer> rejectMap = new ConcurrentHashMap<String, Integer>();
 
+	protected List<SmtpProcess> processList = new CopyOnWriteArrayList<SmtpProcess>();
 	protected SmtpParameter parameter;
 
 	/**
@@ -57,8 +59,8 @@ public class SingleSmtpServer {
 			serverSocket.bind(new InetSocketAddress(parameter.getPort()), parameter.getBacklog());
 			this.serverSocket = serverSocket;
 			while (true) {
-				SmtpProcess process = new SmtpProcess(parameter, serverSocket.accept());
-				process.execute(rejectMap, System.out);
+				SmtpProcess process = new SmtpProcess(parameter, serverSocket.accept(), rejectMap);
+				process.execute();
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
