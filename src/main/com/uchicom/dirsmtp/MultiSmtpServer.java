@@ -41,15 +41,24 @@ public class MultiSmtpServer extends SingleSmtpServer {
 			this.serverSocket = server;
 			Thread thread = new Thread() {
 				public void run() {
-					for (SmtpProcess process : processList) {
-						if (System.currentTimeMillis() - process.getStartTime() > 5 * 1000) {
-							process.forceClose();
-							processList.remove(process);
+					while(true) {
+						for (SmtpProcess process : processList) {
+							if (System.currentTimeMillis() - process.getStartTime() > 5 * 1000) {
+								process.forceClose();
+								processList.remove(process);
+							}
+						}
+						try {
+							Thread.sleep(1000);
+						} catch (InterruptedException e) {
+							// TODO 自動生成された catch ブロック
+							e.printStackTrace();
 						}
 					}
 				}
 			};
 			thread.setDaemon(true);
+			thread.start();
 			while (true) {
 
 				final SmtpProcess process = new SmtpProcess(parameter,
