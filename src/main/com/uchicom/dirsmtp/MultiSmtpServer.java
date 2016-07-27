@@ -43,7 +43,7 @@ public class MultiSmtpServer extends SingleSmtpServer {
 				public void run() {
 					while(true) {
 						for (SmtpProcess process : processList) {
-							if (System.currentTimeMillis() - process.getStartTime() > 5 * 1000) {
+							if (System.currentTimeMillis() - process.getStartTime() > 10 * 1000) {
 								process.forceClose();
 								processList.remove(process);
 							}

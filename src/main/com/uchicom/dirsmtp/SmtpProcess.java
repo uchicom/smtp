@@ -357,11 +357,12 @@ public class SmtpProcess {
 	}
 
 	public void forceClose() {
-		if (rejectMap.containsKey(senderAddress)) {
-			rejectMap.put(senderAddress, rejectMap.get(senderAddress) + 1);
-		} else {
-			rejectMap.put(senderAddress, 1);
-		}
+//		if (rejectMap.containsKey(senderAddress)) {
+//			rejectMap.put(senderAddress, rejectMap.get(senderAddress) + 1);
+//		} else {
+//			rejectMap.put(senderAddress, 1);
+//		}
+		System.out.println("forceClose!");
 		if (socket != null && socket.isConnected()) {
 			try {
 				socket.close();
