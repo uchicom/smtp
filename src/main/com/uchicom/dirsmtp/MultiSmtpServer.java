@@ -4,84 +4,34 @@
 package com.uchicom.dirsmtp;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 
 /**
  * @author uchicom: Shigeki Uchiyama
  *
  */
-public class MultiSmtpServer extends SingleSmtpServer {
+public class MultiSmtpServer extends AbstractSocketServer {
 
 
 	public MultiSmtpServer(SmtpParameter parameter) {
 		super(parameter);
 	}
 
-	/**
-	 * アドレスとメールユーザーフォルダの格納フォルダを指定する
-	 *
-	 * @param args
+
+	/* (非 Javadoc)
+	 * @see com.uchicom.dirsmtp.AbstractSocketServer#execute(java.net.ServerSocket)
 	 */
-	public static void main(String[] args) {
-		SmtpParameter parameter = new SmtpParameter(args);
-		if (parameter.init(System.err)) {
-			MultiSmtpServer server = new MultiSmtpServer(parameter);
-			server.execute();
-		}
-	}
-
-	public void execute() {
-		ServerSocket server = null;
-		try {
-			server = new ServerSocket();
-			server.setReuseAddress(true);
-			server.bind(new InetSocketAddress(parameter.getPort()),
-					parameter.getBacklog());
-			this.serverSocket = server;
-			Thread thread = new Thread() {
+	@Override
+	protected void execute(ServerSocket serverSocket) throws IOException {
+		while (true) {
+			final SmtpProcess process = new SmtpProcess(parameter,
+					serverSocket.accept(), rejectMap);
+			processList.add(process);
+			new Thread() {
 				public void run() {
-					while(true) {
-						for (SmtpProcess process : processList) {
-							if (System.currentTimeMillis() - process.getStartTime() > 10 * 1000) {
-								process.forceClose();
-								processList.remove(process);
-							}
-						}
-						try {
-							Thread.sleep(1000);
-						} catch (InterruptedException e) {
-							// TODO 自動生成された catch ブロック
-							e.printStackTrace();
-						}
-					}
+					process.execute();
 				}
-			};
-			thread.setDaemon(true);
-			thread.start();
-			while (true) {
-
-				final SmtpProcess process = new SmtpProcess(parameter,
-						server.accept(), rejectMap);
-				processList.add(process);
-				new Thread() {
-					public void run() {
-						process.execute();
-					}
-				}.start();
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		} finally {
-			if (server != null) {
-				try {
-					server.close();
-				} catch (Exception e) {
-					e.printStackTrace();
-				} finally {
-					server = null;
-				}
-			}
+			}.start();
 		}
 	}
 

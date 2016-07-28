@@ -39,7 +39,8 @@ public class SmtpParameter {
 
 	/** ユーザー名一覧 */
 	private String[] users;
-
+	/** 実行するサーバのタイプ */
+	private String type = "single";
 
 	private String[] args;
 
@@ -47,6 +48,7 @@ public class SmtpParameter {
 
 	/**
 	 * 引数指定のコンストラクター.
+	 *
 	 * @param args 引数
 	 */
 	public SmtpParameter(String[] args) {
@@ -60,34 +62,37 @@ public class SmtpParameter {
 	 * @return
 	 */
 	public boolean init(PrintStream ps) {
-		//        if (args.length < 1) {
-		//            ps.println("args.length < 1");
-		//            return false;
-		//        }
 		for (int i = 0; i < args.length - 1; i++) {
-			if ("-server".equals(args[i])) {
-
-			} else if ("-dir".equals(args[i])) {// メールフォルダ格納フォルダ
+			switch (args[i]) {
+			case "-server":
+				break;
+			case "-dir":// メールフォルダ格納フォルダ
 				base = new File(args[++i]);
 				if (!base.exists() || !base.isDirectory()) {
 					ps.println("mailbox directory is not found.");
 					return false;
 				}
-			} else if ("-host".equals(args[i])) {// ホスト名
+				break;
+			case "-host":// ホスト名
 				hostName = args[++i];
-			} else if ("-port".equals(args[i])) {// ポート
+				break;
+			case "-port":// ポート
 				port = Integer.parseInt(args[++i]);
-			} else if ("-back".equals(args[i])) {// 接続待ち数
+				break;
+			case "-back":// 接続待ち数
 				backlog = Integer.parseInt(args[++i]);
-			} else if ("-pool".equals(args[i])) {// スレッドプール数
+				break;
+			case "-pool":// スレッドプール数
 				pool = Integer.parseInt(args[++i]);
-			} else if ("-memory".equals(args[i])) {
+				break;
+			case "-memory":
 				memory = true;
 				users = args[++i].split(",");
 				boxMap = new HashMap<>();
 				for (String user : users) {
 					boxMap.put(user, new ArrayList<Mail>());
 				}
+				break;
 			}
 		}
 
@@ -179,4 +184,19 @@ public class SmtpParameter {
 	public String[] getUsers() {
 		return users;
 	}
+
+    public Server createServer() {
+    	Server server = null;
+		switch (type) {
+		case "multi":
+			server = new MultiSmtpServer(this);
+		case "pool":
+			server = new PoolSmtpServer(this);
+			break;
+		case "single":
+			server = new SingleSmtpServer(this);
+			break;
+		}
+    	return server;
+    }
 }

@@ -4,21 +4,29 @@
 package com.uchicom.dirsmtp;
 
 /**
+ * 起動クラス.
+ *
  * @author uchicom: Shigeki Uchiyama
  *
  */
 public class Main {
 
 	/**
+	 * アドレスとメールユーザーフォルダの格納フォルダを指定する.
+	 *
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		SmtpParameter param = new SmtpParameter(args);
-		if (param.init(System.err)) {
-			SingleSmtpServer server = new SingleSmtpServer(param);
-			server.execute();
+		SmtpParameter parameter = new SmtpParameter(args);
+		if (parameter.init(System.err)) {
+			Server server = parameter.createServer();
+			if (server != null) {
+				server.execute();
+			} else {
+				//エラーログ
+				System.err.println("usage:type is single,multi,pool,selector");
+			}
 		}
-
 	}
 
 }
