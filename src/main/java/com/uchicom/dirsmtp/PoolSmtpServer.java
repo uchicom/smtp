@@ -8,6 +8,8 @@ import java.net.ServerSocket;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import com.uchicom.server.AbstractSocketServer;
+
 /**
  * @author uchicom: Shigeki Uchiyama
  *
@@ -16,7 +18,7 @@ public class PoolSmtpServer extends AbstractSocketServer {
 	ExecutorService exec;
     public PoolSmtpServer(SmtpParameter parameter) {
 		super(parameter);
-		exec = Executors.newFixedThreadPool(parameter.getPool());
+		exec = Executors.newFixedThreadPool(parameter.getInt("pool"));
 	}
 
 
@@ -26,7 +28,7 @@ public class PoolSmtpServer extends AbstractSocketServer {
 	@Override
 	protected void execute(ServerSocket serverSocket) throws IOException {
 		while (true) {
-            final SmtpProcess process = new SmtpProcess(parameter, serverSocket.accept(), rejectMap);
+            final SmtpProcess process = new SmtpProcess(parameter, serverSocket.accept());
             exec.execute(new Runnable() {
             	public void run() {
             		process.execute();

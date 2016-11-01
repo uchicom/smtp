@@ -17,7 +17,9 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
+
+import com.uchicom.server.Parameter;
+import com.uchicom.server.ServerProcess;
 
 /**
  * SMTP処理クラス.
@@ -26,11 +28,11 @@ import java.util.Map;
  * @author uchicom: Shigeki Uchiyama
  *
  */
-public class SmtpProcess {
+public class SmtpProcess implements ServerProcess {
 
 	private SimpleDateFormat format = new SimpleDateFormat(
 			"yyyyMMdd_HHmmss.SSS");
-	private SmtpParameter parameter;
+	private Parameter parameter;
 	private Socket socket;
 
 	private boolean bHelo;
@@ -47,14 +49,11 @@ public class SmtpProcess {
 	private String authName;
 
 	private List<MailBox> boxList = new ArrayList<MailBox>();
-	private static final int ERROR_COUNT = 3;
 
 	/** 送付先一覧 */
 	private List<MailBox> rcptList = new ArrayList<MailBox>();
 
 	private long startTime = System.currentTimeMillis();
-
-	private Map<String, Integer> rejectMap;
 
 	/**
 	 * コンストラクタ.
@@ -63,12 +62,11 @@ public class SmtpProcess {
 	 * @param socket
 	 * @throws IOException
 	 */
-	public SmtpProcess(SmtpParameter parameter, Socket socket, Map<String, Integer> rejectMap)
+	public SmtpProcess(Parameter parameter, Socket socket)
 			throws IOException {
 		this.parameter = parameter;
 		this.socket = socket;
 		this.senderAddress = socket.getInetAddress().getHostAddress();
-		this.rejectMap = rejectMap;
 	}
 
 	public void execute() {
@@ -88,16 +86,10 @@ public class SmtpProcess {
 		PrintStream ps = null;
 		Writer writer = null;
 		try {
-			//転送はしないので３回チャレンジしたサーバは除外する.
-			if (rejectMap != null && rejectMap.containsKey(senderAddress)) {
-				if (rejectMap.get(senderAddress).intValue() >= ERROR_COUNT) {
-					return;
-				}
-			}
 			br = new BufferedReader(new InputStreamReader(
 					socket.getInputStream()));
 			ps = new PrintStream(socket.getOutputStream());
-			SmtpUtil.recieveLine(ps, "220 ", parameter.getHostName(), " SMTP");
+			SmtpUtil.recieveLine(ps, "220 ", parameter.get("host"), " SMTP");
 			String line = br.readLine();
 			// HELO
 			// MAIL FROM:
@@ -112,18 +104,18 @@ public class SmtpProcess {
 					switch (authStatus) {
 					case 1:
 						String name = new String(Base64.getDecoder().decode(line));
-						File dir = new File(parameter.getBase(), name);
+						File dir = new File(parameter.getFile("dir"), name);
 						if (dir.exists() && dir.isDirectory()) {
 							authStatus = 2;
 							authName = name;
 
 							SmtpUtil.recieveLine(ps,
-									SmtpStatic.RECV_334, " UGFzc3dvcmQ6");
+									Constants.RECV_334, " UGFzc3dvcmQ6");
 						}
 						break;
 					case 2:
 						String pass = new String(Base64.getDecoder().decode(line));
-						File passwordFile = new File(new File(parameter.getBase(), authName), "pass.txt");
+						File passwordFile = new File(new File(parameter.getFile("dir"), authName), "pass.txt");
 						if (passwordFile.exists() && passwordFile.isFile()) {
 							try (BufferedReader passReader = new BufferedReader(
 									new InputStreamReader(
@@ -136,13 +128,13 @@ public class SmtpProcess {
 								if (pass.equals(password)) {
 
 									SmtpUtil.recieveLine(ps,
-											SmtpStatic.RECV_235);
+											Constants.RECV_235);
 									bAuth = true;
 									authStatus = 3;
 								} else {
 									// パスワード不一致エラー
 									SmtpUtil.recieveLine(ps,
-											SmtpStatic.RECV_535);
+											Constants.RECV_535);
 									authStatus = 0;
 								}
 							}
@@ -163,7 +155,7 @@ public class SmtpProcess {
 						}
 						mail = null;
 						rcptList.clear();
-						SmtpUtil.recieveLine(ps, SmtpStatic.RECV_250_OK);
+						SmtpUtil.recieveLine(ps, Constants.RECV_250_OK);
 						init();
 					} else {
 						// メッセージ本文
@@ -175,22 +167,22 @@ public class SmtpProcess {
 					bHelo = true;
 					String[] lines = line.split(" +");
 					helo = lines[1];
-					SmtpUtil.recieveLine(ps, SmtpStatic.RECV_250, "-",
-							parameter.getHostName(), " Hello ", senderAddress);
-					SmtpUtil.recieveLine(ps, SmtpStatic.RECV_250, " AUTH LOGIN");
+					SmtpUtil.recieveLine(ps, Constants.RECV_250, "-",
+							parameter.get("host"), " Hello ", senderAddress);
+					SmtpUtil.recieveLine(ps, Constants.RECV_250, " AUTH LOGIN");
 					init();
 				} else if (SmtpUtil.isAuthLogin(line)){
 					authStatus = 1;
-					SmtpUtil.recieveLine(ps, SmtpStatic.RECV_334, " VXNlcm5hbWU6");
+					SmtpUtil.recieveLine(ps, Constants.RECV_334, " VXNlcm5hbWU6");
 				} else if (SmtpUtil.isRset(line)) {
-					SmtpUtil.recieveLine(ps, SmtpStatic.RECV_250_OK);
+					SmtpUtil.recieveLine(ps, Constants.RECV_250_OK);
 					init();
 				} else if (SmtpUtil.isMailFrom(line)) {
 					if (bHelo) {
 						mailFrom = line.substring(10).trim()
 								.replaceAll("[<>]", "");
 						logStream.println(mailFrom);
-						SmtpUtil.recieveLine(ps, SmtpStatic.RECV_250_OK);
+						SmtpUtil.recieveLine(ps, Constants.RECV_250_OK);
 						bMailFrom = true;
 					} else {
 						// エラー500
@@ -203,20 +195,20 @@ public class SmtpProcess {
 						String[] addresses = address.split("@");
 						logStream.println(addresses[0]);
 						logStream.println(addresses[1]);
-						if (addresses[1].equals(parameter.getHostName())) {
+						if (addresses[1].equals(parameter.get("host"))) {
 							// 宛先チェック
 							boolean checkOK = false;
-							if (parameter.isMemory()) {
-								for (String user : parameter.getUsers()) {
+							if (parameter.is("memory")) {
+								for (String user : Context.singleton().getUsers()) {
 									if (addresses[0].equals(user)) {
-										boxList.add(new MailBox(address, parameter.getMailList(user)));
+										boxList.add(new MailBox(address, Context.singleton().getMailList(user)));
 										checkOK = true;
 										break;
 									}
 								}
 
 							} else {
-								for (File box : parameter.getBase().listFiles()) {
+								for (File box : parameter.getFile("base").listFiles()) {
 									if (box.isDirectory()) {
 										if (addresses[0].equals(box.getName())) {
 											checkOK = true;
@@ -227,37 +219,20 @@ public class SmtpProcess {
 								}
 							}
 							if (checkOK) {
-								SmtpUtil.recieveLine(ps, SmtpStatic.RECV_250_OK);
+								SmtpUtil.recieveLine(ps, Constants.RECV_250_OK);
 								bRcptTo = true;
 							} else {
 								// エラーユーザー存在しない
 								SmtpUtil.recieveLine(ps, "550 Failure reply");
-								if (rejectMap != null) {
-									if (rejectMap.containsKey(senderAddress)) {
-										rejectMap.put(senderAddress, rejectMap.get(senderAddress) + 1);
-									} else {
-										rejectMap.put(senderAddress, Integer.valueOf(1));
-									}
-								}
-								if (rejectMap.get(senderAddress).intValue() >= ERROR_COUNT) {
-									return;
-								}
 							}
 						} else if (bAuth) {
 							//認証済みなので転送OKする
 
-							SmtpUtil.recieveLine(ps, SmtpStatic.RECV_250_OK);
+							SmtpUtil.recieveLine(ps, Constants.RECV_250_OK);
 							bRcptTo = true;
 						} else {
 							// エラーホストが違う
 							SmtpUtil.recieveLine(ps, "500");
-							if (rejectMap != null) {
-								if (rejectMap.containsKey(senderAddress)) {
-									rejectMap.put(senderAddress, rejectMap.get(senderAddress) + 1);
-								} else {
-									rejectMap.put(senderAddress, Integer.valueOf(1));
-								}
-							}
 						}
 					} else {
 						// エラー500
@@ -265,10 +240,10 @@ public class SmtpProcess {
 					}
 				} else if (SmtpUtil.isData(line)) {
 					if (bRcptTo) {
-						if (parameter.isMemory()) {
+						if (parameter.is("memory")) {
 							mail = new MemoryMail();
 						} else {
-							mail = new FileMail(new File(new File(parameter.getBase(), "@rcpt"), helo.replaceAll(":", "_")
+							mail = new FileMail(new File(new File(parameter.getFile("dir"), "@rcpt"), helo.replaceAll(":", "_")
 									+ "_"
 									+ mailFrom
 									+ "~"
@@ -280,7 +255,7 @@ public class SmtpProcess {
 									+ ".eml"));
 						}
 						writer = mail.getWriter();
-						SmtpUtil.recieveLine(ps, SmtpStatic.RECV_354);
+						SmtpUtil.recieveLine(ps, Constants.RECV_354);
 						bData = true;
 					} else {
 						// エラー
@@ -289,7 +264,7 @@ public class SmtpProcess {
 				} else if (SmtpUtil.isHelp(line)) {
 					SmtpUtil.recieveLine(ps, "250");
 				} else if (SmtpUtil.isQuit(line)) {
-					SmtpUtil.recieveLine(ps, "221 ", parameter.getHostName());
+					SmtpUtil.recieveLine(ps, "221 ", parameter.get("host"));
 					break;
 				} else if (SmtpUtil.isNoop(line)) {
 					SmtpUtil.recieveLine(ps, "250");
@@ -357,20 +332,39 @@ public class SmtpProcess {
 	}
 
 	public void forceClose() {
-//		if (rejectMap.containsKey(senderAddress)) {
-//			rejectMap.put(senderAddress, rejectMap.get(senderAddress) + 1);
-//		} else {
-//			rejectMap.put(senderAddress, 1);
-//		}
 		System.out.println("forceClose!");
 		if (socket != null && socket.isConnected()) {
 			try {
 				socket.close();
 			} catch (IOException e) {
-				// TODO 自動生成された catch ブロック
 				e.printStackTrace();
 			}
 			socket = null;
 		}
 	}
+
+	public List<Mail> getMailList(String user) {
+		if (parameter.is("memory")) {
+			return Context.singleton().getMailList(user);
+		} else {
+			List<Mail> mailList = new ArrayList<>();
+			File box = new File(parameter.getFile("base"), user);
+			if (box.exists()) {
+				for (File file : box.listFiles()) {
+					try {
+						mailList.add(new FileMail(file));
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+			return mailList;
+		}
+	}
+
+	@Override
+	public long getLastTime() {
+		return 0;
+	}
+
 }

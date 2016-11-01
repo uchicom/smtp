@@ -29,7 +29,7 @@ public class SmtpUtil {
 	 * @return
 	 */
 	public static boolean isEhelo(String cmd) {
-		return cmd.matches(SmtpStatic.REG_EXP_EHLO);
+		return cmd.matches(Constants.REG_EXP_EHLO);
 	}
 
 	/**
@@ -39,7 +39,7 @@ public class SmtpUtil {
 	 * @return
 	 */
 	public static boolean isHelo(String cmd) {
-		return cmd.matches(SmtpStatic.REG_EXP_HELO);
+		return cmd.matches(Constants.REG_EXP_HELO);
 	}
 
 	/**
@@ -49,7 +49,7 @@ public class SmtpUtil {
 	 * @return
 	 */
 	public static boolean isRset(String cmd) {
-		return cmd.matches(SmtpStatic.REG_EXP_RSET);
+		return cmd.matches(Constants.REG_EXP_RSET);
 	}
 
 	/**
@@ -59,7 +59,7 @@ public class SmtpUtil {
 	 * @return
 	 */
 	public static boolean isMailFrom(String cmd) {
-		return cmd.matches(SmtpStatic.REG_EXP_MAIL_FROM);
+		return cmd.matches(Constants.REG_EXP_MAIL_FROM);
 	}
 
 	/**
@@ -69,7 +69,7 @@ public class SmtpUtil {
 	 * @return
 	 */
 	public static boolean isRcptTo(String cmd) {
-		return cmd.matches(SmtpStatic.REG_EXP_RCPT_TO);
+		return cmd.matches(Constants.REG_EXP_RCPT_TO);
 	}
 
 	/**
@@ -79,7 +79,7 @@ public class SmtpUtil {
 	 * @return
 	 */
 	public static boolean isData(String cmd) {
-		return cmd.matches(SmtpStatic.REG_EXP_DATA);
+		return cmd.matches(Constants.REG_EXP_DATA);
 	}
 
 	/**
@@ -89,7 +89,7 @@ public class SmtpUtil {
 	 * @return
 	 */
 	public static boolean isQuit(String cmd) {
-		return cmd.matches(SmtpStatic.REG_EXP_QUIT);
+		return cmd.matches(Constants.REG_EXP_QUIT);
 	}
 
 	/**
@@ -99,7 +99,7 @@ public class SmtpUtil {
 	 * @return
 	 */
 	public static boolean isNoop(String cmd) {
-		return cmd.matches(SmtpStatic.REG_EXP_NOOP);
+		return cmd.matches(Constants.REG_EXP_NOOP);
 	}
 
 	/**
@@ -109,7 +109,7 @@ public class SmtpUtil {
 	 * @return
 	 */
 	public static boolean isVrfy(String cmd) {
-		return cmd.matches(SmtpStatic.REG_EXP_VRFY);
+		return cmd.matches(Constants.REG_EXP_VRFY);
 	}
 
 	/**
@@ -119,7 +119,7 @@ public class SmtpUtil {
 	 * @return
 	 */
 	public static boolean isExpn(String cmd) {
-		return cmd.matches(SmtpStatic.REG_EXP_EXPN);
+		return cmd.matches(Constants.REG_EXP_EXPN);
 	}
 
 	/**
@@ -129,10 +129,10 @@ public class SmtpUtil {
 	 * @return
 	 */
 	public static boolean isHelp(String cmd) {
-		return cmd.matches(SmtpStatic.REG_EXP_HELP);
+		return cmd.matches(Constants.REG_EXP_HELP);
 	}
 	public static boolean isAuthLogin(String cmd) {
-		return cmd.matches(SmtpStatic.REG_EXP_AUTH_LOGIN);
+		return cmd.matches(Constants.REG_EXP_AUTH_LOGIN);
 	}
 
 	/**
@@ -145,7 +145,7 @@ public class SmtpUtil {
 		for (String string : strings) {
 			ps.print(string);
 		}
-		ps.print(SmtpStatic.RECV_LINE_END);
+		ps.print(Constants.RECV_LINE_END);
 		ps.flush();
 	}
 

@@ -6,6 +6,8 @@ package com.uchicom.dirsmtp;
 import java.io.IOException;
 import java.net.ServerSocket;
 
+import com.uchicom.server.AbstractSocketServer;
+
 /**
  * @author uchicom: Shigeki Uchiyama
  *
@@ -25,7 +27,7 @@ public class MultiSmtpServer extends AbstractSocketServer {
 	protected void execute(ServerSocket serverSocket) throws IOException {
 		while (true) {
 			final SmtpProcess process = new SmtpProcess(parameter,
-					serverSocket.accept(), rejectMap);
+					serverSocket.accept());
 			processList.add(process);
 			new Thread() {
 				public void run() {

@@ -3,15 +3,13 @@
  */
 package com.uchicom.dirsmtp;
 
-import java.io.File;
-
 /**
  * SMTPの定数クラス.
  *
  * @author uchicom: Shigeki Uchiyama
  *
  */
-public class SmtpStatic {
+public class Constants {
 
 	public static String PASSWORD_FILE_NAME = "pass.txt";
 	// SMTP返却メッセージ
@@ -62,11 +60,11 @@ public class SmtpStatic {
 
 	// 初期設定
 	/** デフォルトメールボックスディレクトリ */
-	public static File DEFAULT_MAILBOX = new File("./mailbox");
+	public static String DEFAULT_MAILBOX = "./mailbox";
 	/** デフォルト待ち受けポート番号 */
-	public static int DEFAULT_PORT = 25;
+	public static String DEFAULT_PORT = "25";
 	/** デフォルト接続待ち数 */
-	public static int DEFAULT_BACK = 10;
+	public static String DEFAULT_BACK = "10";
 	/** デフォルトスレッドプール数 */
-	public static int DEFAULT_POOL = 10;
+	public static String DEFAULT_POOL = "10";
 }

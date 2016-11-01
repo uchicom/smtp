@@ -3,6 +3,8 @@
  */
 package com.uchicom.dirsmtp;
 
+import com.uchicom.server.Server;
+
 /**
  * 起動クラス.
  *
