@@ -5,8 +5,11 @@ package com.uchicom.dirsmtp;
 
 import java.io.PrintStream;
 
+import com.uchicom.server.MultiSocketServer;
 import com.uchicom.server.Parameter;
+import com.uchicom.server.PoolSocketServer;
 import com.uchicom.server.Server;
+import com.uchicom.server.SingleSocketServer;
 
 /**
  * SMTP実行用のパラメータクラス.
@@ -69,13 +72,19 @@ public class SmtpParameter extends Parameter {
     	Server server = null;
 		switch (get("type")) {
 		case "multi":
-			server = new MultiSmtpServer(this);
+			server = new MultiSocketServer(this, (parameter, socket)-> {
+				return new SmtpProcess(parameter, socket);
+			});
 			break;
 		case "pool":
-			server = new PoolSmtpServer(this);
+			server = new PoolSocketServer(this, (parameter, socket)-> {
+				return new SmtpProcess(parameter, socket);
+			});
 			break;
 		case "single":
-			server = new SingleSmtpServer(this);
+			server = new SingleSocketServer(this, (parameter, socket)-> {
+				return new SmtpProcess(parameter, socket);
+			});
 			break;
 		}
     	return server;

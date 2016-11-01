@@ -62,11 +62,9 @@ public class SmtpProcess implements ServerProcess {
 	 * @param socket
 	 * @throws IOException
 	 */
-	public SmtpProcess(Parameter parameter, Socket socket)
-			throws IOException {
+	public SmtpProcess(Parameter parameter, Socket socket) {
 		this.parameter = parameter;
 		this.socket = socket;
-		this.senderAddress = socket.getInetAddress().getHostAddress();
 	}
 
 	public void execute() {
@@ -79,7 +77,7 @@ public class SmtpProcess implements ServerProcess {
 	 * @throws IOException
 	 */
 	public void execute(PrintStream logStream) {
-
+		this.senderAddress = socket.getInetAddress().getHostAddress();
 		logStream.println(System.currentTimeMillis() + ":"
 				+ String.valueOf(senderAddress));
 		BufferedReader br = null;
