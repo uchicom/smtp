@@ -1,4 +1,4 @@
-package com.uchicom.dirsmtp;
+package com.uchicom.smtp;
 
 import java.util.ArrayList;
 import java.util.HashMap;

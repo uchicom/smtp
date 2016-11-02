@@ -1,7 +1,7 @@
 /**
  * (c) 2015 uchicom
  */
-package com.uchicom.dirsmtp;
+package com.uchicom.smtp;
 
 import java.io.BufferedWriter;
 import java.io.File;

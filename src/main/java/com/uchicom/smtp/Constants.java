@@ -1,7 +1,7 @@
 /**
  * (c) 2012 uchicom
  */
-package com.uchicom.dirsmtp;
+package com.uchicom.smtp;
 
 /**
  * SMTPの定数クラス.

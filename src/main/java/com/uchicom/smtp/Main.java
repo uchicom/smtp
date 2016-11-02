@@ -1,7 +1,7 @@
 /**
  * (c) 2015 uchicom
  */
-package com.uchicom.dirsmtp;
+package com.uchicom.smtp;
 
 /**
  * 起動クラス.
