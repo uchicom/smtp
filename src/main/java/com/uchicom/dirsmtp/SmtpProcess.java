@@ -155,6 +155,9 @@ public class SmtpProcess implements ServerProcess {
 						rcptList.clear();
 						SmtpUtil.recieveLine(ps, Constants.RECV_250_OK);
 						init();
+					} else if (line.indexOf(0) == '.') {
+						writer.write(line.substring(1));
+						writer.write("\r\n");
 					} else {
 						// メッセージ本文
 						writer.write(line);
