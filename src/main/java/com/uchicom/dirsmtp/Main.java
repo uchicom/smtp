@@ -3,8 +3,6 @@
  */
 package com.uchicom.dirsmtp;
 
-import com.uchicom.server.Server;
-
 /**
  * 起動クラス.
  *
@@ -21,13 +19,7 @@ public class Main {
 	public static void main(String[] args) {
 		SmtpParameter parameter = new SmtpParameter(args);
 		if (parameter.init(System.err)) {
-			Server server = parameter.createServer();
-			if (server != null) {
-				server.execute();
-			} else {
-				//エラーログ
-				System.err.println("usage:type is single,multi,pool,selector");
-			}
+			parameter.createServer().execute();
 		}
 	}
 
