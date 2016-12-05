@@ -4,26 +4,34 @@
 package com.uchicom.smtp;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.io.PrintStream;
 import java.io.Writer;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
+
+import javax.naming.NamingException;
+import javax.naming.directory.Attribute;
+import javax.naming.directory.Attributes;
+import javax.naming.directory.InitialDirContext;
 
 import com.uchicom.server.Parameter;
 import com.uchicom.server.ServerProcess;
 
 /**
- * SMTP処理クラス.
- * 送信処理認証後は、他サーバに直接接続してプロキシ―のような処理をする。
+ * SMTP処理クラス. 送信処理認証後は、他サーバに直接接続してプロキシ―のような処理をする。
  *
  * @author uchicom: Shigeki Uchiyama
  *
@@ -40,6 +48,8 @@ public class SmtpProcess implements ServerProcess {
 	private boolean bRcptTo;
 	private boolean bData;
 	private boolean bAuth;
+	/** 外のメールサーバに転送する */
+	private boolean bTransfer;
 	private int authStatus;
 
 	private String senderAddress;
@@ -48,10 +58,13 @@ public class SmtpProcess implements ServerProcess {
 	private Mail mail;
 	private String authName;
 
-	private List<MailBox> boxList = new ArrayList<MailBox>();
+	private List<MailBox> boxList = new ArrayList<>();
 
 	/** 送付先一覧 */
-	private List<MailBox> rcptList = new ArrayList<MailBox>();
+	private List<MailBox> rcptList = new ArrayList<>();
+
+	/** 転送アドレス一覧 */
+	private List<String> transferList = new ArrayList<>();
 
 	private long startTime = System.currentTimeMillis();
 
@@ -98,6 +111,7 @@ public class SmtpProcess implements ServerProcess {
 			// DATAの順で処理する
 			while (line != null) {
 				logStream.println("[" + line + "]");
+				logStream.println("status:" + authStatus);
 				if (authStatus > 0 && authStatus < 3) {
 					switch (authStatus) {
 					case 1:
@@ -108,7 +122,8 @@ public class SmtpProcess implements ServerProcess {
 							authName = name;
 
 							SmtpUtil.recieveLine(ps,
-									Constants.RECV_334, " UGFzc3dvcmQ6");
+									Constants.RECV_334,
+									" UGFzc3dvcmQ6");
 						}
 						break;
 					case 2:
@@ -138,20 +153,77 @@ public class SmtpProcess implements ServerProcess {
 							}
 						}
 						break;
-						default:
+					default:
 					}
 				} else if (bData) {
 					if (".".equals(line)) {
 						// メッセージ終了
 						writer.close();
-						// メッセージコピー処理
-						try {
-							mail.copy(boxList, socket.getLocalAddress().getHostName() ,socket.getInetAddress().getHostName());
+						if (bTransfer) {
+							logStream.println("transferList:" + transferList);
+							for (String address : transferList) {
+								//転送処理を実行する。
+
+								logStream.println("transfer:" + address);
+								String[] addresses = address.split("@");
+								String[] hosts = lookupMailHosts(addresses[1]);
+								for (String hostss : hosts) {
+
+									try (Socket transferSocket = new Socket(hostss, 25);
+											BufferedReader reader = new BufferedReader(new InputStreamReader(transferSocket.getInputStream()));
+											BufferedWriter writer2 = new BufferedWriter(new OutputStreamWriter(transferSocket.getOutputStream()));) {
+										logStream.println("t[" + reader.readLine() + "]");
+										startTime = System.currentTimeMillis();
+										writer2.write("EHLO uchicom.com\r\n");//EHLO
+										writer2.flush();
+										startTime = System.currentTimeMillis();
+										logStream.println("t[" + reader.readLine() + "]");
+										startTime = System.currentTimeMillis();
+										writer2.write("MAIL FROM: " + mailFrom + "\r\n");// MAIL FROM:
+										writer2.flush();
+										startTime = System.currentTimeMillis();
+										logStream.println("t[" + reader.readLine() + "]");
+										startTime = System.currentTimeMillis();
+										writer2.write("RCPT TO: " + address + "\r\n");// RCPT TO:
+										writer2.flush();
+										startTime = System.currentTimeMillis();
+										logStream.println("t[" + reader.readLine() + "]");
+										startTime = System.currentTimeMillis();
+										writer2.write("DATA\r\n");// DATA
+										writer2.flush();
+										startTime = System.currentTimeMillis();
+										logStream.println("t[" + reader.readLine() + "]");
+										startTime = System.currentTimeMillis();
+										writer2.write(mail.getTitle());
+										writer2.flush();
+										startTime = System.currentTimeMillis();
+										writer2.write(".\r\n");
+										writer2.flush();
+										logStream.println("t[" + reader.readLine() + "]");
+										startTime = System.currentTimeMillis();
+										writer2.write("QUIT\r\n");
+										writer2.flush();
+										logStream.println("t[" + reader.readLine() + "]");
+										startTime = System.currentTimeMillis();
+									}
+									logStream.println("mx!:" + hostss);
+									break;
+								}
+							}
 							mail.delete();
-						} catch (Exception e) {
-							e.printStackTrace();
+						} else {
+							// メッセージコピー処理
+							try {
+								mail.copy(boxList,
+										socket.getLocalAddress().getHostName(),
+										socket.getInetAddress().getHostName());
+								mail.delete();
+							} catch (Exception e) {
+								e.printStackTrace();
+							}
 						}
 						mail = null;
+						transferList.clear();
 						rcptList.clear();
 						SmtpUtil.recieveLine(ps, Constants.RECV_250_OK);
 						init();
@@ -168,11 +240,15 @@ public class SmtpProcess implements ServerProcess {
 					bHelo = true;
 					String[] lines = line.split(" +");
 					helo = lines[1];
-					SmtpUtil.recieveLine(ps, Constants.RECV_250, "-",
-							parameter.get("host"), " Hello ", senderAddress);
+					SmtpUtil.recieveLine(ps,
+							Constants.RECV_250,
+							"-",
+							parameter.get("host"),
+							" Hello ",
+							senderAddress);
 					SmtpUtil.recieveLine(ps, Constants.RECV_250, " AUTH LOGIN");
 					init();
-				} else if (SmtpUtil.isAuthLogin(line)){
+				} else if (SmtpUtil.isAuthLogin(line)) {
 					authStatus = 1;
 					SmtpUtil.recieveLine(ps, Constants.RECV_334, " VXNlcm5hbWU6");
 				} else if (SmtpUtil.isRset(line)) {
@@ -180,7 +256,8 @@ public class SmtpProcess implements ServerProcess {
 					init();
 				} else if (SmtpUtil.isMailFrom(line)) {
 					if (bHelo) {
-						mailFrom = line.substring(10).trim()
+						mailFrom = line.substring(10)
+								.trim()
 								.replaceAll("[<>]", "");
 						logStream.println(mailFrom);
 						SmtpUtil.recieveLine(ps, Constants.RECV_250_OK);
@@ -209,7 +286,7 @@ public class SmtpProcess implements ServerProcess {
 								}
 
 							} else {
-								for (File box : parameter.getFile("base").listFiles()) {
+								for (File box : parameter.getFile("dir").listFiles()) {
 									if (box.isDirectory()) {
 										if (addresses[0].equals(box.getName())) {
 											checkOK = true;
@@ -230,6 +307,8 @@ public class SmtpProcess implements ServerProcess {
 							//認証済みなので転送OKする
 
 							SmtpUtil.recieveLine(ps, Constants.RECV_250_OK);
+							bTransfer = true;
+							transferList.add(address);
 							bRcptTo = true;
 						} else {
 							// エラーホストが違う
@@ -241,19 +320,22 @@ public class SmtpProcess implements ServerProcess {
 					}
 				} else if (SmtpUtil.isData(line)) {
 					if (bRcptTo) {
-						if (parameter.is("memory")) {
+						if (bTransfer) {
+							mail = new MemoryMail();
+						} else if (parameter.is("memory")) {
 							mail = new MemoryMail();
 						} else {
-							mail = new FileMail(new File(new File(parameter.getFile("dir"), "@rcpt"), helo.replaceAll(":", "_")
-									+ "_"
-									+ mailFrom
-									+ "~"
-									+ senderAddress.replaceAll(":", "_")
-									+ "_"
-									+ format.format(new Date())
-									+ "_"
-									+ Thread.currentThread().getId()
-									+ ".eml"));
+							mail = new FileMail(
+									new File(new File(parameter.getFile("dir"), "@rcpt"), helo.replaceAll(":", "_")
+											+ "_"
+											+ mailFrom
+											+ "~"
+											+ senderAddress.replaceAll(":", "_")
+											+ "_"
+											+ format.format(new Date())
+											+ "_"
+											+ Thread.currentThread().getId()
+											+ ".eml"));
 						}
 						writer = mail.getWriter();
 						SmtpUtil.recieveLine(ps, Constants.RECV_354);
@@ -349,7 +431,7 @@ public class SmtpProcess implements ServerProcess {
 			return Context.singleton().getMailList(user);
 		} else {
 			List<Mail> mailList = new ArrayList<>();
-			File box = new File(parameter.getFile("base"), user);
+			File box = new File(parameter.getFile("dir"), user);
 			if (box.exists()) {
 				for (File file : box.listFiles()) {
 					try {
@@ -365,7 +447,38 @@ public class SmtpProcess implements ServerProcess {
 
 	@Override
 	public long getLastTime() {
-		return 0;
+		return startTime;
 	}
 
+	static String[] lookupMailHosts(String domainName) throws NamingException {
+
+		InitialDirContext idc = new InitialDirContext();
+		Attributes attributes = idc.getAttributes("dns:/" + domainName, new String[] { "MX" });
+		Attribute attributeMX = attributes.get("MX");
+
+		if (attributeMX == null) {
+			return (new String[] { domainName });
+		}
+
+		String[][] pvhn = new String[attributeMX.size()][2];
+		for (int i = 0; i < attributeMX.size(); i++) {
+			pvhn[i] = ("" + attributeMX.get(i)).split("\\s+");
+		}
+
+		Arrays.sort(pvhn, new Comparator<String[]>() {
+			public int compare(String[] o1, String[] o2) {
+				return (Integer.parseInt(o1[0]) - Integer.parseInt(o2[0]));
+			}
+		});
+
+		String[] sortedHostNames = new String[pvhn.length];
+		for (int i = 0; i < pvhn.length; i++) {
+			if (pvhn[i][1].endsWith(".")) {
+				sortedHostNames[i] = pvhn[i][1].substring(0, pvhn[i][1].length() - 1);
+			} else {
+				sortedHostNames[i] = pvhn[i][1];
+			}
+		}
+		return sortedHostNames;
+	}
 }
