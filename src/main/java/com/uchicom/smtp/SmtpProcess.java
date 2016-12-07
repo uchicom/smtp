@@ -177,7 +177,11 @@ public class SmtpProcess implements ServerProcess {
 										writer2.write("EHLO uchicom.com\r\n");//EHLO
 										writer2.flush();
 										startTime = System.currentTimeMillis();
-										logStream.println("t[" + reader.readLine() + "]");
+										String rec = null;
+										do {
+											rec = reader.readLine();
+											logStream.println("t[" + rec + "]");
+										}while (rec != null && rec.startsWith("250-"));
 										startTime = System.currentTimeMillis();
 										writer2.write("MAIL FROM: " + mailFrom + "\r\n");// MAIL FROM:
 										writer2.flush();
