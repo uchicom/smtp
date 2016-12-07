@@ -178,37 +178,114 @@ public class SmtpProcess implements ServerProcess {
 										writer2.flush();
 										startTime = System.currentTimeMillis();
 										String rec = null;
+										boolean starttls = false;
 										do {
 											rec = reader.readLine();
 											logStream.println("t[" + rec + "]");
+											if (rec.contains("STARTTLS")) {
+												starttls = true;
+											}
 										}while (rec != null && rec.startsWith("250-"));
 										startTime = System.currentTimeMillis();
-										writer2.write("MAIL FROM: " + mailFrom + "\r\n");// MAIL FROM:
-										writer2.flush();
-										startTime = System.currentTimeMillis();
-										logStream.println("t[" + reader.readLine() + "]");
-										startTime = System.currentTimeMillis();
-										writer2.write("RCPT TO: " + address + "\r\n");// RCPT TO:
-										writer2.flush();
-										startTime = System.currentTimeMillis();
-										logStream.println("t[" + reader.readLine() + "]");
-										startTime = System.currentTimeMillis();
-										writer2.write("DATA\r\n");// DATA
-										writer2.flush();
-										startTime = System.currentTimeMillis();
-										logStream.println("t[" + reader.readLine() + "]");
-										startTime = System.currentTimeMillis();
-										writer2.write(mail.getTitle());
-										writer2.flush();
-										startTime = System.currentTimeMillis();
-										writer2.write(".\r\n");
-										writer2.flush();
-										logStream.println("t[" + reader.readLine() + "]");
-										startTime = System.currentTimeMillis();
-										writer2.write("QUIT\r\n");
-										writer2.flush();
-										logStream.println("t[" + reader.readLine() + "]");
-										startTime = System.currentTimeMillis();
+//										if (starttls) {
+//											writer2.write("STARTTLS\r\n");// STARTTLS
+//											writer2.flush();
+//											startTime = System.currentTimeMillis();
+//											logStream.println("t[" + reader.readLine() + "]");
+//											writer2.close();
+//											reader.close();
+//											//SSL処理開始
+//											SSLSocket sslSocket = (SSLSocket) ((SSLSocketFactory) SSLSocketFactory.getDefault()).createSocket(
+//								                       socket,
+//								                       socket.getInetAddress().getHostAddress(),
+//								                       socket.getPort(),
+//								                       true);
+////											sslSocket.setEnabledProtocols(sslSocket.getSupportedProtocols());
+////
+////											sslSocket.setEnabledCipherSuites(sslSocket.getSupportedCipherSuites());
+//											sslSocket.setEnableSessionCreation(true);
+//											sslSocket.setUseClientMode(true);
+//											logStream.println("startHandshake");
+//											startTime = System.currentTimeMillis();
+//											sslSocket.startHandshake();
+//											startTime = System.currentTimeMillis();
+//											logStream.println("reader2");
+//											BufferedReader reader2 = new BufferedReader(new InputStreamReader(sslSocket.getInputStream()));
+//
+//											logStream.println("writer3");
+//											BufferedWriter writer3 = new BufferedWriter(new OutputStreamWriter(sslSocket.getOutputStream()));
+//
+//											startTime = System.currentTimeMillis();
+//
+//											logStream.println("ehlo");
+//											writer3.write("EHLO uchicom.com\r\n");//EHLO
+//											logStream.println("flush");
+//											writer3.flush();
+//											startTime = System.currentTimeMillis();
+//											rec = null;
+//											do {
+//												logStream.println("readline");
+//												rec = reader2.readLine();
+//												logStream.println("t[" + rec + "]");
+//											}while (rec != null && rec.startsWith("250-"));
+//											logStream.println("mailFrom3:" + mailFrom);
+//											writer3.write("MAIL FROM: <" + mailFrom + ">\r\n");// MAIL FROM:
+//											writer3.flush();
+//											startTime = System.currentTimeMillis();
+//											logStream.println("t[" + reader2.readLine() + "]");
+//											startTime = System.currentTimeMillis();
+//											writer3.write("RCPT TO: <" + address + ">\r\n");// RCPT TO:
+//											writer3.flush();
+//											startTime = System.currentTimeMillis();
+//											logStream.println("t[" + reader2.readLine() + "]");
+//											startTime = System.currentTimeMillis();
+//											writer3.write("DATA\r\n");// DATA
+//											writer3.flush();
+//											startTime = System.currentTimeMillis();
+//											logStream.println("t[" + reader2.readLine() + "]");
+//											startTime = System.currentTimeMillis();
+//											writer3.write(mail.getTitle());
+//											writer3.flush();
+//											startTime = System.currentTimeMillis();
+//											writer3.write(".\r\n");
+//											writer3.flush();
+//											logStream.println("t[" + reader2.readLine() + "]");
+//											startTime = System.currentTimeMillis();
+//											writer3.write("QUIT\r\n");
+//											writer3.flush();
+//											logStream.println("t[" + reader2.readLine() + "]");
+//											startTime = System.currentTimeMillis();
+//											reader2.close();
+//											writer3.close();
+//										} else {
+											logStream.println("mailFrom:" + mailFrom);
+											writer2.write("MAIL FROM: <" + mailFrom + ">\r\n");// MAIL FROM:
+											writer2.flush();
+											startTime = System.currentTimeMillis();
+											logStream.println("t[" + reader.readLine() + "]");
+											startTime = System.currentTimeMillis();
+											writer2.write("RCPT TO: <" + address + ">\r\n");// RCPT TO:
+											writer2.flush();
+											startTime = System.currentTimeMillis();
+											logStream.println("t[" + reader.readLine() + "]");
+											startTime = System.currentTimeMillis();
+											writer2.write("DATA\r\n");// DATA
+											writer2.flush();
+											startTime = System.currentTimeMillis();
+											logStream.println("t[" + reader.readLine() + "]");
+											startTime = System.currentTimeMillis();
+											writer2.write(mail.getTitle());
+											writer2.flush();
+											startTime = System.currentTimeMillis();
+											writer2.write(".\r\n");
+											writer2.flush();
+											logStream.println("t[" + reader.readLine() + "]");
+											startTime = System.currentTimeMillis();
+											writer2.write("QUIT\r\n");
+											writer2.flush();
+											logStream.println("t[" + reader.readLine() + "]");
+											startTime = System.currentTimeMillis();
+//										}
 									}
 									logStream.println("mx!:" + hostss);
 									break;
@@ -451,7 +528,7 @@ public class SmtpProcess implements ServerProcess {
 
 	@Override
 	public long getLastTime() {
-		return startTime;
+		return System.currentTimeMillis();
 	}
 
 	static String[] lookupMailHosts(String domainName) throws NamingException {
