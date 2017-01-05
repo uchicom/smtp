@@ -573,7 +573,7 @@ public class SmtpProcess implements ServerProcess {
 		File mailFromFile = new File(box, ".ignore");
 		if (mailFromFile.exists() && mailFromFile.isFile()) {
 			Properties prop = new Properties();
-			try (FileInputStream fis = new FileInputStream(mailFrom)) {
+			try (FileInputStream fis = new FileInputStream(mailFromFile)) {
 				prop.load(fis);
 				String all = prop.getProperty("*");
 				if (all != null) {
@@ -586,26 +586,28 @@ public class SmtpProcess implements ServerProcess {
 			} catch (Exception e) {
 				e.printStackTrace(logStream);
 			}
-
+			prop.clear();
 			if (!add) {
 				File mailFromResultFile = new File(box, ".ignore_result");
 				int cnt = 1;
-				try (FileInputStream fis = new FileInputStream(mailFromResultFile)) {
-					prop.load(fis);
-				} catch (Exception e) {
-					e.printStackTrace(logStream);
-				}
-				if (!prop.isEmpty()) {
+				try {
+					mailFromResultFile.createNewFile();
+					try (FileInputStream fis = new FileInputStream(mailFromResultFile)) {
+						prop.load(fis);
+					}
 					String ignore = prop.getProperty(mailFrom);
 					if (ignore != null) {
 						cnt = Integer.parseInt(ignore);
+						cnt++;
 					}
 					prop.setProperty(mailFrom, String.valueOf(cnt));
 					try (FileOutputStream fos = new FileOutputStream(mailFromResultFile)) {
 						prop.store(fos, "");
-					} catch (Exception e) {
-						e.printStackTrace(logStream);
 					}
+				} catch (IOException e) {
+					e.printStackTrace(logStream);
+				} catch (Exception e) {
+					e.printStackTrace(logStream);
 				}
 			}
 		}

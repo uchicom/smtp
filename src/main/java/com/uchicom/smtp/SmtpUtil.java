@@ -154,15 +154,12 @@ public class SmtpUtil {
 	 * @param to
 	 */
 	public static void copyFile(File from, File to, String mailAddress, String senderHostName, String localHostName) throws IOException {
-		FileChannel ic = null;
-		FileChannel oc = null;
-		FileInputStream fi = null;
-		FileOutputStream fo = null;
-		try {
-			fi = new FileInputStream(from);
-			fo = new FileOutputStream(to);
-			ic = fi.getChannel();
-			StringBuffer strBuff = new StringBuffer();
+		try (@SuppressWarnings("resource")
+		FileChannel ic = new FileInputStream(from).getChannel();
+			@SuppressWarnings("resource")
+			FileChannel oc = new FileOutputStream(to).getChannel();){
+
+			StringBuffer strBuff = new StringBuffer(1024);
 			strBuff.append("Received: from ");
 			strBuff.append(senderHostName);
 			strBuff.append("\r\n");
@@ -174,7 +171,6 @@ public class SmtpUtil {
 			strBuff.append(">; ");
 			strBuff.append(dateTimeFormatter.format(OffsetDateTime.now()));
 			strBuff.append("\r\n");
-			oc = fo.getChannel();
 			ByteBuffer buff = ByteBuffer.wrap(strBuff.toString().getBytes());
 			oc.write(buff);
 			long current = 0;
@@ -184,31 +180,6 @@ public class SmtpUtil {
 			}
 		} catch (IOException e) {
 			throw e;
-		} finally {
-			if (ic != null) {
-				try {
-					ic.close();
-				} catch (IOException e) {
-					e.printStackTrace();
-				} finally {
-					ic = null;
-				}
-			}
-			if (oc != null) {
-				try {
-					oc.close();
-				} catch (IOException e) {
-					e.printStackTrace();
-				} finally {
-					oc = null;
-				}
-			}
-			if (fi != null) {
-				fi.close();
-			}
-			if (fo != null) {
-				fo.close();
-			}
 		}
 	}
 }
