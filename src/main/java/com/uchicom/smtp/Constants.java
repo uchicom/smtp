@@ -1,6 +1,4 @@
-/**
- * (c) 2012 uchicom
- */
+// (c) 2012 uchicom
 package com.uchicom.smtp;
 
 /**

@@ -1,6 +1,4 @@
-/**
- * (c) 2014 uchicom
- */
+// (c) 2014 uchicom
 package com.uchicom.smtp;
 
 import java.io.BufferedReader;

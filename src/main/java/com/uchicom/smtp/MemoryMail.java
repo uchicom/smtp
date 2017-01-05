@@ -1,6 +1,4 @@
-/**
- * (c) 2015 uchicom
- */
+// (c) 2015 uchicom
 package com.uchicom.smtp;
 
 import java.io.ByteArrayOutputStream;

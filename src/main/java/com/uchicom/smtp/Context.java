@@ -1,3 +1,4 @@
+// (c) 2016 uchicom
 package com.uchicom.smtp;
 
 import java.util.ArrayList;
