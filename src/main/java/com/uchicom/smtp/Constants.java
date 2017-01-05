@@ -32,13 +32,13 @@ public class Constants {
 
 	// SMTPコマンド正規表現
 	/** EHLOの正規表現(大文字小文字後続スペース) */
-	public static String REG_EXP_EHLO = "^ *[Ee][Hh][Ll][Oo] +[^ ]* *$";
+	public static String REG_EXP_EHLO = "^ *[Ee][Hh][Ll][Oo] +[^ ]+ *$";
 	/** HELOの正規表現(大文字小文字後続スペース) */
-	public static String REG_EXP_HELO = "^ *[Hh][Ee][Ll][Oo] +[^ ]* *$";
+	public static String REG_EXP_HELO = "^ *[Hh][Ee][Ll][Oo] +[^ ]+ *$";
 	/** MAIL FROM:アドレスの正規表現(大文字小文字後続スペース) */
-	public static String REG_EXP_MAIL_FROM = "^[Mm][Aa][Ii][Ll] [Ff][Rr][Oo][Mm]:.* *$";
+	public static String REG_EXP_MAIL_FROM = "^[Mm][Aa][Ii][Ll] [Ff][Rr][Oo][Mm]:.+@.+ *$";
 	/** RCPT TO:アドレスの正規表現(大文字小文字後続スペース) */
-	public static String REG_EXP_RCPT_TO = "^[Rr][Cc][Pp][Tt] [Tt][Oo]:.* *$";
+	public static String REG_EXP_RCPT_TO = "^[Rr][Cc][Pp][Tt] [Tt][Oo]:.+@.+ *$";
 	/** DATAの正規表現(大文字小文字後続スペース) */
 	public static String REG_EXP_DATA = "^[Dd][Aa][Tt][Aa] *$";
 	/** QUITの正規表現(大文字小文字後続スペース) */
