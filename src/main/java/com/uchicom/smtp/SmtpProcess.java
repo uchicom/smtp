@@ -7,6 +7,7 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
@@ -21,6 +22,7 @@ import java.util.Base64;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
+import java.util.Properties;
 
 import javax.naming.NamingException;
 import javax.naming.directory.Attribute;
@@ -178,12 +180,12 @@ public class SmtpProcess implements ServerProcess {
 										writer2.flush();
 										startTime = System.currentTimeMillis();
 										String rec = null;
-										boolean starttls = false;
+//										boolean starttls = false;
 										do {
 											rec = reader.readLine();
 											logStream.println("t[" + rec + "]");
 											if (rec.contains("STARTTLS")) {
-												starttls = true;
+//												starttls = true;
 											}
 										}while (rec != null && rec.startsWith("250-"));
 										startTime = System.currentTimeMillis();
@@ -356,12 +358,10 @@ public class SmtpProcess implements ServerProcess {
 						logStream.println(addresses[1]);
 						if (addresses[1].equals(parameter.get("host"))) {
 							// 宛先チェック
-							boolean checkOK = false;
 							if (parameter.is("memory")) {
 								for (String user : Context.singleton().getUsers()) {
 									if (addresses[0].equals(user)) {
 										boxList.add(new MailBox(address, Context.singleton().getMailList(user)));
-										checkOK = true;
 										break;
 									}
 								}
@@ -370,14 +370,15 @@ public class SmtpProcess implements ServerProcess {
 								for (File box : parameter.getFile("dir").listFiles()) {
 									if (box.isDirectory()) {
 										if (addresses[0].equals(box.getName())) {
-											checkOK = true;
-											boxList.add(new MailBox(address, box));
+											if (mailFromCheck(box, logStream)) {
+												boxList.add(new MailBox(address, box));
+											}
 											break;
 										}
 									}
 								}
 							}
-							if (checkOK) {
+							if (boxList.size() > 0) {
 								SmtpUtil.recieveLine(ps, Constants.RECV_250_OK);
 								bRcptTo = true;
 							} else {
@@ -561,5 +562,55 @@ public class SmtpProcess implements ServerProcess {
 			}
 		}
 		return sortedHostNames;
+	}
+
+	/**
+	 * MAIL FROM で制御する
+	 * @param box
+	 * @param logStream
+	 * @return
+	 */
+	private boolean mailFromCheck(File box, PrintStream logStream) {
+		boolean add = true;
+		File mailFromFile = new File(box, ".ignore");
+		if (mailFromFile.exists() && mailFromFile.isFile()) {
+			Properties prop = new Properties();
+			try (FileInputStream fis = new FileInputStream(mailFrom)) {
+				prop.load(fis);
+				String all = prop.getProperty("*");
+				if (all != null) {
+					add = Boolean.getBoolean(all);
+				}
+				String ignore = prop.getProperty(mailFrom);
+				if (ignore != null) {
+					add = Boolean.getBoolean(ignore);
+				}
+			} catch (Exception e) {
+				e.printStackTrace(logStream);
+			}
+
+			if (!add) {
+				File mailFromResultFile = new File(box, ".ignore_result");
+				int cnt = 1;
+				try (FileInputStream fis = new FileInputStream(mailFromResultFile)) {
+					prop.load(fis);
+				} catch (Exception e) {
+					e.printStackTrace(logStream);
+				}
+				if (!prop.isEmpty()) {
+					String ignore = prop.getProperty(mailFrom);
+					if (ignore != null) {
+						cnt = Integer.parseInt(ignore);
+					}
+					prop.setProperty(mailFrom, String.valueOf(cnt));
+					try (FileOutputStream fos = new FileOutputStream(mailFromResultFile)) {
+						prop.store(fos, "");
+					} catch (Exception e) {
+						e.printStackTrace(logStream);
+					}
+				}
+			}
+		}
+		return add;
 	}
 }
