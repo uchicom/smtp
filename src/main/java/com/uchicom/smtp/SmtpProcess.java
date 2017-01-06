@@ -530,7 +530,7 @@ public class SmtpProcess implements ServerProcess {
 		return System.currentTimeMillis();
 	}
 
-	static String[] lookupMailHosts(String domainName) throws NamingException {
+	public static String[] lookupMailHosts(String domainName) throws NamingException {
 
 		InitialDirContext idc = new InitialDirContext();
 		Attributes attributes = idc.getAttributes("dns:/" + domainName, new String[] { "MX" });
