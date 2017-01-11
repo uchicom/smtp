@@ -128,7 +128,7 @@ public class SmtpProcess implements ServerProcess {
 						break;
 					case 2:
 						String pass = new String(Base64.getDecoder().decode(line));
-						File passwordFile = new File(new File(parameter.getFile("dir"), authName), "pass.txt");
+						File passwordFile = new File(new File(parameter.getFile("dir"), authName), Constants.PASSWORD_FILE_NAME);
 						if (passwordFile.exists() && passwordFile.isFile()) {
 							try (BufferedReader passReader = new BufferedReader(
 									new InputStreamReader(
@@ -570,7 +570,7 @@ public class SmtpProcess implements ServerProcess {
 	 */
 	private boolean mailFromCheck(File box, PrintStream logStream) {
 		boolean add = true;
-		File mailFromFile = new File(box, ".ignore");
+		File mailFromFile = new File(box, Constants.IGNORE_FILE_NAME);
 		if (mailFromFile.exists() && mailFromFile.isFile()) {
 			Properties prop = new Properties();
 			try (FileInputStream fis = new FileInputStream(mailFromFile)) {
@@ -588,7 +588,7 @@ public class SmtpProcess implements ServerProcess {
 			}
 			prop.clear();
 			if (!add) {
-				File mailFromResultFile = new File(box, ".ignore_result");
+				File mailFromResultFile = new File(box, Constants.IGNORE_RESULT_FILE_NAME);
 				int cnt = 1;
 				try {
 					mailFromResultFile.createNewFile();

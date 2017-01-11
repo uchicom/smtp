@@ -9,7 +9,9 @@ package com.uchicom.smtp;
  */
 public class Constants {
 
-	public static String PASSWORD_FILE_NAME = "pass.txt";
+	public static String PASSWORD_FILE_NAME = ".pass";
+	public static String IGNORE_FILE_NAME = ".ignore";
+	public static String IGNORE_RESULT_FILE_NAME = ".ignore_result";
 	// SMTP返却メッセージ
 	/** 返却メッセージ(250(成功応答)) */
 	public static String RECV_250 = "250";
