@@ -53,7 +53,7 @@ public class MailSender {
 				writer2.flush();
 				rec = reader.readLine();
 				logger.info("t[" + rec + "]");
-				if (!rec.startsWith("250")) throw new Exception(from + "のアドレスが存在しない可能性があります。メールの設定を確認してください");
+				if (!rec.startsWith("250")) throw new Exception(to + "のアドレスが存在しない可能性があります。メールの設定を確認してください");
 				writer2.write("DATA\r\n");// DATA
 				writer2.flush();
 				rec = reader.readLine();
