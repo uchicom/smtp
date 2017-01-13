@@ -568,7 +568,7 @@ public class SmtpProcess implements ServerProcess {
 	 * @param logStream
 	 * @return
 	 */
-	private boolean mailFromCheck(File box, PrintStream logStream) {
+	boolean mailFromCheck(File box, PrintStream logStream) {
 		boolean add = true;
 		File mailFromFile = new File(box, Constants.IGNORE_FILE_NAME);
 		if (mailFromFile.exists() && mailFromFile.isFile()) {
@@ -577,11 +577,15 @@ public class SmtpProcess implements ServerProcess {
 				prop.load(fis);
 				String all = prop.getProperty("*");
 				if (all != null) {
-					add = Boolean.getBoolean(all);
+					add = Boolean.parseBoolean(all);
+				}
+				String domain = prop.getProperty("*" + mailFrom.substring(mailFrom.indexOf('@')));
+				if (domain != null) {
+					add = Boolean.parseBoolean(domain);
 				}
 				String ignore = prop.getProperty(mailFrom);
 				if (ignore != null) {
-					add = Boolean.getBoolean(ignore);
+					add = Boolean.parseBoolean(ignore);
 				}
 			} catch (Exception e) {
 				e.printStackTrace(logStream);
