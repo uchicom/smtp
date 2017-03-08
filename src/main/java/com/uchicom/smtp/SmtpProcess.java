@@ -21,6 +21,7 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Properties;
+import java.util.regex.Matcher;
 
 import javax.naming.NamingException;
 import javax.naming.directory.Attribute;
@@ -51,6 +52,7 @@ public class SmtpProcess implements ServerProcess {
 	/** 外のメールサーバに転送する */
 	private boolean bTransfer;
 	private int authStatus;
+	private boolean bSpam;
 
 	private String senderAddress;
 	private String helo;
@@ -159,7 +161,19 @@ public class SmtpProcess implements ServerProcess {
 					if (".".equals(line)) {
 						// メッセージ終了
 						writer.close();
-						if (bTransfer) {
+						if (bSpam) {
+							// 迷惑メールフォルダに移動
+							try {
+								boxList.stream().forEach((mailBox)->{
+									mailBox.setDir(new File(parameter.getFile("dir"), Constants.SPAM_DIR));
+								});
+								mail.copy(boxList,
+										socket.getLocalAddress().getHostName(),
+										socket.getInetAddress().getHostName());
+							} catch (Exception e) {
+								e.printStackTrace();
+							}
+						} else if (bTransfer) {
 							logStream.println("transferList:" + transferList);
 							for (String address : transferList) {
 								//転送処理を実行する。
@@ -291,28 +305,37 @@ public class SmtpProcess implements ServerProcess {
 									break;
 								}
 							}
-							mail.delete();
 						} else {
 							// メッセージコピー処理
 							try {
 								mail.copy(boxList,
 										socket.getLocalAddress().getHostName(),
 										socket.getInetAddress().getHostName());
-								mail.delete();
 							} catch (Exception e) {
 								e.printStackTrace();
 							}
 						}
+						mail.delete();
 						mail = null;
 						transferList.clear();
 						rcptList.clear();
-						SmtpUtil.recieveLine(ps, Constants.RECV_250_OK);
+
+						if (bSpam) {
+							SmtpUtil.recieveLine(ps, "550");
+						} else {
+							SmtpUtil.recieveLine(ps, Constants.RECV_250_OK);
+						}
 						init();
 					} else if (line.indexOf(0) == '.') {
 						writer.write(line.substring(1));
 						writer.write("\r\n");
 					} else {
 						// メッセージ本文
+						//禁止文字が含まれる場合は、迷惑メールに追加
+						Matcher matcher = Constants.pattern.matcher(line);
+						if (matcher.find()) {
+							bSpam = true;
+						}
 						writer.write(line);
 						writer.write("\r\n");
 					}

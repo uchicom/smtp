@@ -33,6 +33,12 @@ public class MailBox {
 		this.mailList = mailList;
 	}
 
+	public void setDir(File dir) {
+		this.dir = dir;
+		if (!dir.exists()) {
+			dir.mkdirs();
+		}
+	}
 	public File getDir() {
 		return dir;
 	}

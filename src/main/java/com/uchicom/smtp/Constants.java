@@ -1,6 +1,8 @@
 // (c) 2012 uchicom
 package com.uchicom.smtp;
 
+import java.util.regex.Pattern;
+
 /**
  * SMTPの定数クラス.
  *
@@ -12,6 +14,7 @@ public class Constants {
 	public static String PASSWORD_FILE_NAME = ".pass";
 	public static String IGNORE_FILE_NAME = ".ignore";
 	public static String IGNORE_RESULT_FILE_NAME = ".ignore_result";
+	public static String SPAM_DIR = ".spam";
 	// SMTP返却メッセージ
 	/** 返却メッセージ(250(成功応答)) */
 	public static String RECV_250 = "250";
@@ -67,4 +70,7 @@ public class Constants {
 	public static String DEFAULT_BACK = "10";
 	/** デフォルトスレッドプール数 */
 	public static String DEFAULT_POOL = "10";
+
+	/** 迷惑メールパターン */
+	public static final Pattern pattern = Pattern.compile("^Subject:.*Viagra.*");
 }
