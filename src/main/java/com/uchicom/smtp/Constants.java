@@ -19,7 +19,7 @@ public class Constants {
 	/** 返却メッセージ(250(成功応答)) */
 	public static String RECV_250 = "250";
 	/** 返却メッセージ(250(成功応答)) */
-	public static String RECV_235 = "235";
+	public static String RECV_235 = "235 Authentication successful";
 	/** 返却メッセージ(250(成功応答)) */
 	public static String RECV_334 = "334";
 	/** 返却メッセージ(535(認証エラー)) */
