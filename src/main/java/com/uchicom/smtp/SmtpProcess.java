@@ -412,7 +412,7 @@ public class SmtpProcess implements ServerProcess {
 							bRcptTo = true;
 						} else {
 							// エラーホストが違う
-							SmtpUtil.recieveLine(ps, "500");
+							SmtpUtil.recieveLine(ps, "554 <" + address + ">: Relay access denied");
 						}
 					} else {
 						// エラー500
