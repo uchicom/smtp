@@ -62,8 +62,6 @@ public class SmtpProcess implements ServerProcess {
 
 	private List<MailBox> boxList = new ArrayList<>();
 
-	/** 送付先一覧 */
-	private List<MailBox> rcptList = new ArrayList<>();
 
 	/** 転送アドレス一覧 */
 	private List<String> transferList = new ArrayList<>();
@@ -188,7 +186,7 @@ public class SmtpProcess implements ServerProcess {
 											BufferedWriter writer2 = new BufferedWriter(new OutputStreamWriter(transferSocket.getOutputStream()));) {
 										logStream.println("t[" + reader.readLine() + "]");
 										startTime = System.currentTimeMillis();
-										writer2.write("EHLO uchicom.com\r\n");//EHLO
+										writer2.write("EHLO " + parameter.get("host") + "\r\n");//EHLO
 										writer2.flush();
 										startTime = System.currentTimeMillis();
 										String rec = null;
@@ -318,7 +316,6 @@ public class SmtpProcess implements ServerProcess {
 						mail.delete();
 						mail = null;
 						transferList.clear();
-						rcptList.clear();
 
 						if (bSpam) {
 							SmtpUtil.recieveLine(ps, "550");
@@ -481,7 +478,6 @@ public class SmtpProcess implements ServerProcess {
 					e.printStackTrace();
 				}
 				mail = null;
-				rcptList.clear();
 			}
 			if (writer != null) {
 				try {
