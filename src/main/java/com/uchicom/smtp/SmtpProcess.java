@@ -598,6 +598,10 @@ public class SmtpProcess implements ServerProcess {
 				if (all != null) {
 					add = Boolean.parseBoolean(all);
 				}
+				String topLevelDomain = prop.getProperty("*" + mailFrom.substring(mailFrom.lastIndexOf(".")));
+				if (topLevelDomain != null) {
+					add = Boolean.parseBoolean(topLevelDomain);
+				}
 				String domain = prop.getProperty("*" + mailFrom.substring(mailFrom.indexOf('@')));
 				if (domain != null) {
 					add = Boolean.parseBoolean(domain);
