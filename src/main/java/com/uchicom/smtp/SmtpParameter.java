@@ -4,10 +4,10 @@ package com.uchicom.smtp;
 import java.io.PrintStream;
 
 import com.uchicom.server.MultiSocketServer;
-import com.uchicom.server.Parameter;
 import com.uchicom.server.PoolSocketServer;
 import com.uchicom.server.Server;
 import com.uchicom.server.SingleSocketServer;
+import com.uchicom.util.Parameter;
 
 /**
  * SMTP実行用のパラメータクラス.

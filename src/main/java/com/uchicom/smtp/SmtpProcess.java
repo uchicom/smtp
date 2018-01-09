@@ -28,8 +28,8 @@ import javax.naming.directory.Attribute;
 import javax.naming.directory.Attributes;
 import javax.naming.directory.InitialDirContext;
 
-import com.uchicom.server.Parameter;
 import com.uchicom.server.ServerProcess;
+import com.uchicom.util.Parameter;
 
 /**
  * SMTP処理クラス. 送信処理認証後は、他サーバに直接接続してプロキシ―のような処理をする。
@@ -93,13 +93,10 @@ public class SmtpProcess implements ServerProcess {
 		this.senderAddress = socket.getInetAddress().getHostAddress();
 		logStream.println(System.currentTimeMillis() + ":"
 				+ String.valueOf(senderAddress));
-		BufferedReader br = null;
-		PrintStream ps = null;
 		Writer writer = null;
-		try {
-			br = new BufferedReader(new InputStreamReader(
-					socket.getInputStream()));
-			ps = new PrintStream(socket.getOutputStream());
+		try (BufferedReader br = new BufferedReader(new InputStreamReader(
+				socket.getInputStream()));
+				PrintStream ps = new PrintStream(socket.getOutputStream());) {
 			SmtpUtil.recieveLine(ps, "220 ", parameter.get("host"), " SMTP");
 			String line = br.readLine();
 			// HELO

@@ -8,6 +8,7 @@ import java.net.Socket;
 import java.util.Base64;
 import java.util.logging.Logger;
 
+import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 
@@ -53,7 +54,7 @@ public class MailSender {
 //			SSLContext context = SSLContext.getInstance("TLS");
 //			context.init(tmf.getKeyManagers(), null, null);
 //			SSLSocketFactory sf = context.getSocketFactory();
-			SSLSocketFactory sf = (SSLSocketFactory)SSLSocketFactory.getDefault();
+			SSLSocketFactory sf = SSLContext.getDefault().getSocketFactory();
 			SSLSocket socket = (SSLSocket) sf.createSocket(host, port);
 			socket.startHandshake();
 			return socket;
