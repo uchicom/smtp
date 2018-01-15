@@ -497,13 +497,14 @@ public class SmtpProcess implements ServerProcess {
 	}
 
 	/**
-	 * フラグ初期化.
+	 * 初期化.
 	 */
 	private void init() {
 		mail = null;
 		bMailFrom = false;
 		bRcptTo = false;
 		bData = false;
+		boxList.clear();
 	}
 
 	public long getStartTime() {
