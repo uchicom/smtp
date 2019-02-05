@@ -70,6 +70,8 @@ public class Constants {
 	public static String DEFAULT_BACK = "10";
 	/** デフォルトスレッドプール数 */
 	public static String DEFAULT_POOL = "10";
+	/** デフォルト送信フラグ */
+	public static String DEFAULT_TRANSFER = "false";
 
 	/** 迷惑メールパターン */
 	public static final Pattern pattern = Pattern.compile("(^Subject:.*(Viagra|VPXL|Penisole|Cialis|Levitra|[^A-z]+(CV|ED|[Pp]il(l|ls)|[Mm]edicine|hair|Salary)([^A-z]+|$)).*)|( *[Cc]lick *[Hh]ere *)|(^From: $)|([Cc]hat *[Ll]ater)|([Hh]air *[Ll]oss)|([Ss]alary *is *)|([Cc]asino )");

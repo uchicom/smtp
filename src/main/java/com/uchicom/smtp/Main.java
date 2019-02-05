@@ -16,7 +16,7 @@ public class Main {
 	 */
 	public static void main(String[] args) {
 		SmtpParameter parameter = new SmtpParameter(args);
-		if (parameter.init(System.err)) {
+		if (parameter.init()) {
 			parameter.createServer().execute();
 		}
 	}

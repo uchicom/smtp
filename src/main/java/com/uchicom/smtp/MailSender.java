@@ -116,7 +116,7 @@ public class MailSender {
 			rec = reader.readLine();
 			logger.info("t[" + rec + "]");
 			if (!rec.startsWith("250"))
-				throw new Exception("メールの送信に失敗しました。申し訳ございませんが、info@uchicom.comまでご連絡ください");
+				throw new Exception("メールの送信に失敗しました。申し訳ございませんが、メールの管理者までご連絡ください");
 			writer2.write("QUIT\r\n");
 			writer2.flush();
 			rec = reader.readLine();
@@ -179,7 +179,7 @@ public class MailSender {
 				rec = reader.readLine();
 				logger.info("t[" + rec + "]");
 				if (!rec.startsWith("250"))
-					throw new Exception("メールの送信に失敗しました。申し訳ございませんが、info@uchicom.comまでご連絡ください");
+					throw new Exception("メールの送信に失敗しました。申し訳ございませんが、メールの管理者mまでご連絡ください");
 				sent = true;
 				writer2.write("QUIT\r\n");
 				writer2.flush();

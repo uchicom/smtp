@@ -21,6 +21,8 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Properties;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.regex.Matcher;
 
 import javax.naming.NamingException;
@@ -38,6 +40,9 @@ import com.uchicom.util.Parameter;
  *
  */
 public class SmtpProcess implements ServerProcess {
+	
+
+	private static final Logger logger = Logger.getLogger(SmtpProcess.class.getCanonicalName());
 
 	private SimpleDateFormat format = new SimpleDateFormat(
 			"yyyyMMdd_HHmmss.SSS");
@@ -80,19 +85,14 @@ public class SmtpProcess implements ServerProcess {
 		this.socket = socket;
 	}
 
-	public void execute() {
-		execute(System.out);
-	}
-
 	/**
 	 * SMTP処理を実行
 	 *
 	 * @throws IOException
 	 */
-	public void execute(PrintStream logStream) {
+	public void execute() {
 		this.senderAddress = socket.getInetAddress().getHostAddress();
-		logStream.println(System.currentTimeMillis() + ":"
-				+ String.valueOf(senderAddress));
+		logger.log(Level.INFO, String.valueOf(senderAddress));
 		Writer writer = null;
 		try (BufferedReader br = new BufferedReader(new InputStreamReader(
 				socket.getInputStream()));
@@ -107,8 +107,8 @@ public class SmtpProcess implements ServerProcess {
 			// RCPT TO:
 			// DATAの順で処理する
 			while (line != null) {
-				logStream.println("[" + line + "]");
-				logStream.println("status:" + authStatus);
+				logger.log(Level.INFO,"[" + line + "]");
+				logger.log(Level.INFO,"status:" + authStatus);
 				if (authStatus > 0 && authStatus < 3) {
 					switch (authStatus) {
 					case 1:
@@ -169,11 +169,11 @@ public class SmtpProcess implements ServerProcess {
 								e.printStackTrace();
 							}
 						} else if (bTransfer) {
-							logStream.println("transferList:" + transferList);
+							logger.log(Level.INFO,"transferList:" + transferList);
 							for (String address : transferList) {
 								//転送処理を実行する。
 
-								logStream.println("transfer:" + address);
+								logger.log(Level.INFO,"transfer:" + address);
 								String[] addresses = address.split("@");
 								String[] hosts = lookupMailHosts(addresses[1]);
 								for (String hostss : hosts) {
@@ -181,7 +181,7 @@ public class SmtpProcess implements ServerProcess {
 									try (Socket transferSocket = new Socket(hostss, 25);
 											BufferedReader reader = new BufferedReader(new InputStreamReader(transferSocket.getInputStream()));
 											BufferedWriter writer2 = new BufferedWriter(new OutputStreamWriter(transferSocket.getOutputStream()));) {
-										logStream.println("t[" + reader.readLine() + "]");
+										logger.log(Level.INFO,"t[" + reader.readLine() + "]");
 										startTime = System.currentTimeMillis();
 										writer2.write("EHLO " + parameter.get("host") + "\r\n");//EHLO
 										writer2.flush();
@@ -190,7 +190,7 @@ public class SmtpProcess implements ServerProcess {
 //										boolean starttls = false;
 										do {
 											rec = reader.readLine();
-											logStream.println("t[" + rec + "]");
+											logger.log(Level.INFO,"t[" + rec + "]");
 											if (rec.contains("STARTTLS")) {
 //												starttls = true;
 											}
@@ -200,7 +200,7 @@ public class SmtpProcess implements ServerProcess {
 //											writer2.write("STARTTLS\r\n");// STARTTLS
 //											writer2.flush();
 //											startTime = System.currentTimeMillis();
-//											logStream.println("t[" + reader.readLine() + "]");
+//											logger.log(Level.INFO,"t[" + reader.readLine() + "]");
 //											writer2.close();
 //											reader.close();
 //											//SSL処理開始
@@ -214,89 +214,89 @@ public class SmtpProcess implements ServerProcess {
 ////											sslSocket.setEnabledCipherSuites(sslSocket.getSupportedCipherSuites());
 //											sslSocket.setEnableSessionCreation(true);
 //											sslSocket.setUseClientMode(true);
-//											logStream.println("startHandshake");
+//											logger.log(Level.INFO,"startHandshake");
 //											startTime = System.currentTimeMillis();
 //											sslSocket.startHandshake();
 //											startTime = System.currentTimeMillis();
-//											logStream.println("reader2");
+//											logger.log(Level.INFO,"reader2");
 //											BufferedReader reader2 = new BufferedReader(new InputStreamReader(sslSocket.getInputStream()));
 //
-//											logStream.println("writer3");
+//											logger.log(Level.INFO,"writer3");
 //											BufferedWriter writer3 = new BufferedWriter(new OutputStreamWriter(sslSocket.getOutputStream()));
 //
 //											startTime = System.currentTimeMillis();
 //
-//											logStream.println("ehlo");
+//											logger.log(Level.INFO,"ehlo");
 //											writer3.write("EHLO uchicom.com\r\n");//EHLO
-//											logStream.println("flush");
+//											logger.log(Level.INFO,"flush");
 //											writer3.flush();
 //											startTime = System.currentTimeMillis();
 //											rec = null;
 //											do {
-//												logStream.println("readline");
+//												logger.log(Level.INFO,"readline");
 //												rec = reader2.readLine();
-//												logStream.println("t[" + rec + "]");
+//												logger.log(Level.INFO,"t[" + rec + "]");
 //											}while (rec != null && rec.startsWith("250-"));
-//											logStream.println("mailFrom3:" + mailFrom);
+//											logger.log(Level.INFO,"mailFrom3:" + mailFrom);
 //											writer3.write("MAIL FROM: <" + mailFrom + ">\r\n");// MAIL FROM:
 //											writer3.flush();
 //											startTime = System.currentTimeMillis();
-//											logStream.println("t[" + reader2.readLine() + "]");
+//											logger.log(Level.INFO,"t[" + reader2.readLine() + "]");
 //											startTime = System.currentTimeMillis();
 //											writer3.write("RCPT TO: <" + address + ">\r\n");// RCPT TO:
 //											writer3.flush();
 //											startTime = System.currentTimeMillis();
-//											logStream.println("t[" + reader2.readLine() + "]");
+//											logger.log(Level.INFO,"t[" + reader2.readLine() + "]");
 //											startTime = System.currentTimeMillis();
 //											writer3.write("DATA\r\n");// DATA
 //											writer3.flush();
 //											startTime = System.currentTimeMillis();
-//											logStream.println("t[" + reader2.readLine() + "]");
+//											logger.log(Level.INFO,"t[" + reader2.readLine() + "]");
 //											startTime = System.currentTimeMillis();
 //											writer3.write(mail.getTitle());
 //											writer3.flush();
 //											startTime = System.currentTimeMillis();
 //											writer3.write(".\r\n");
 //											writer3.flush();
-//											logStream.println("t[" + reader2.readLine() + "]");
+//											logger.log(Level.INFO,"t[" + reader2.readLine() + "]");
 //											startTime = System.currentTimeMillis();
 //											writer3.write("QUIT\r\n");
 //											writer3.flush();
-//											logStream.println("t[" + reader2.readLine() + "]");
+//											logger.log(Level.INFO,"t[" + reader2.readLine() + "]");
 //											startTime = System.currentTimeMillis();
 //											reader2.close();
 //											writer3.close();
 //										} else {
-											logStream.println("mailFrom:" + mailFrom);
+											logger.log(Level.INFO,"mailFrom:" + mailFrom);
 											writer2.write("MAIL FROM: <" + mailFrom + ">\r\n");// MAIL FROM:
 											writer2.flush();
 											startTime = System.currentTimeMillis();
-											logStream.println("t[" + reader.readLine() + "]");
+											logger.log(Level.INFO,"t[" + reader.readLine() + "]");
 											startTime = System.currentTimeMillis();
 											writer2.write("RCPT TO: <" + address + ">\r\n");// RCPT TO:
 											writer2.flush();
 											startTime = System.currentTimeMillis();
-											logStream.println("t[" + reader.readLine() + "]");
+											logger.log(Level.INFO,"t[" + reader.readLine() + "]");
 											startTime = System.currentTimeMillis();
 											writer2.write("DATA\r\n");// DATA
 											writer2.flush();
 											startTime = System.currentTimeMillis();
-											logStream.println("t[" + reader.readLine() + "]");
+											logger.log(Level.INFO,"t[" + reader.readLine() + "]");
 											startTime = System.currentTimeMillis();
 											writer2.write(mail.getTitle());
 											writer2.flush();
 											startTime = System.currentTimeMillis();
 											writer2.write(".\r\n");
 											writer2.flush();
-											logStream.println("t[" + reader.readLine() + "]");
+											logger.log(Level.INFO,"t[" + reader.readLine() + "]");
 											startTime = System.currentTimeMillis();
 											writer2.write("QUIT\r\n");
 											writer2.flush();
-											logStream.println("t[" + reader.readLine() + "]");
+											logger.log(Level.INFO,"t[" + reader.readLine() + "]");
 											startTime = System.currentTimeMillis();
 //										}
 									}
-									logStream.println("mx!:" + hostss);
+									logger.log(Level.INFO,"mx!:" + hostss);
 									break;
 								}
 							}
@@ -344,9 +344,11 @@ public class SmtpProcess implements ServerProcess {
 							parameter.get("host"),
 							" Hello ",
 							senderAddress);
-					SmtpUtil.recieveLine(ps, Constants.RECV_250, " AUTH LOGIN");
+					if (parameter.is("transfer")) {
+						SmtpUtil.recieveLine(ps, Constants.RECV_250, " AUTH LOGIN");
+					}
 					init();
-				} else if (SmtpUtil.isAuthLogin(line)) {
+				} else if (SmtpUtil.isAuthLogin(line) && parameter.is("transfer")) {
 					authStatus = 1;
 					SmtpUtil.recieveLine(ps, Constants.RECV_334, " VXNlcm5hbWU6");
 				} else if (SmtpUtil.isRset(line)) {
@@ -357,7 +359,7 @@ public class SmtpProcess implements ServerProcess {
 						mailFrom = line.substring(10)
 								.trim()
 								.replaceAll("[<>]", "");
-						logStream.println(mailFrom);
+						logger.log(Level.INFO,mailFrom);
 						SmtpUtil.recieveLine(ps, Constants.RECV_250_OK);
 						bMailFrom = true;
 					} else {
@@ -369,8 +371,8 @@ public class SmtpProcess implements ServerProcess {
 						String[] heads = line.split(":");
 						String address = heads[1].trim().replaceAll("[<>]", "");
 						String[] addresses = address.split("@");
-						logStream.println(addresses[0]);
-						logStream.println(addresses[1]);
+						logger.log(Level.INFO,addresses[0]);
+						logger.log(Level.INFO,addresses[1]);
 						if (addresses[1].equals(parameter.get("host"))) {
 							// 宛先チェック
 							if (parameter.is("memory")) {
@@ -385,7 +387,7 @@ public class SmtpProcess implements ServerProcess {
 								for (File box : parameter.getFile("dir").listFiles()) {
 									if (box.isDirectory()) {
 										if (addresses[0].equals(box.getName())) {
-											if (mailFromCheck(box, logStream)) {
+											if (mailFromCheck(box)) {
 												boxList.add(new MailBox(address, box));
 											}
 											break;
@@ -400,7 +402,7 @@ public class SmtpProcess implements ServerProcess {
 								// エラーユーザー存在しない
 								SmtpUtil.recieveLine(ps, "550 Failure reply");
 							}
-						} else if (bAuth) {
+						} else if (bAuth && parameter.is("transfer")) { //念のためチェック
 							//認証済みなので転送OKする
 
 							SmtpUtil.recieveLine(ps, Constants.RECV_250_OK);
@@ -585,7 +587,7 @@ public class SmtpProcess implements ServerProcess {
 	 * @param logStream
 	 * @return
 	 */
-	boolean mailFromCheck(File box, PrintStream logStream) {
+	boolean mailFromCheck(File box) {
 		boolean add = true;
 		File mailFromFile = new File(box, Constants.IGNORE_FILE_NAME);
 		if (mailFromFile.exists() && mailFromFile.isFile()) {
@@ -609,7 +611,7 @@ public class SmtpProcess implements ServerProcess {
 					add = Boolean.parseBoolean(ignore);
 				}
 			} catch (Exception e) {
-				e.printStackTrace(logStream);
+				logger.log(Level.WARNING, e.getMessage(), e);
 			}
 			prop.clear();
 			if (!add) {
@@ -630,9 +632,9 @@ public class SmtpProcess implements ServerProcess {
 						prop.store(fos, "");
 					}
 				} catch (IOException e) {
-					e.printStackTrace(logStream);
+					logger.log(Level.WARNING, e.getMessage(), e);
 				} catch (Exception e) {
-					e.printStackTrace(logStream);
+					logger.log(Level.WARNING, e.getMessage(), e);
 				}
 			}
 		}
