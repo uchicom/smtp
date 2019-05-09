@@ -338,14 +338,21 @@ public class SmtpProcess implements ServerProcess {
 					bHelo = true;
 					String[] lines = line.split(" +");
 					helo = lines[1];
+					if (parameter.is("transfer")) {
 					SmtpUtil.recieveLine(ps,
 							Constants.RECV_250,
 							"-",
 							parameter.get("host"),
 							" Hello ",
 							senderAddress);
-					if (parameter.is("transfer")) {
 						SmtpUtil.recieveLine(ps, Constants.RECV_250, " AUTH LOGIN");
+					} else {
+						SmtpUtil.recieveLine(ps,
+								Constants.RECV_250,
+								" ",
+								parameter.get("host"),
+								" Hello ",
+								senderAddress);
 					}
 					init();
 				} else if (SmtpUtil.isAuthLogin(line) && parameter.is("transfer")) {
