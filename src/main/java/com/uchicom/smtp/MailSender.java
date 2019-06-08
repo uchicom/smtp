@@ -2,10 +2,14 @@
 package com.uchicom.smtp;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.Base64;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.net.ssl.SSLContext;
@@ -197,5 +201,135 @@ public class MailSender {
 		if (!sent) {
 			throw exception;
 		}
+	}
+	
+	public static void send(String fromHost, String fromMailAddress, String toHost, String toMailAddress, String data) throws UnknownHostException, IOException {
+
+		try (Socket transferSocket = new Socket(toHost, 25);
+				BufferedReader reader = new BufferedReader(
+						new InputStreamReader(transferSocket.getInputStream()));
+				BufferedWriter writer = new BufferedWriter(
+						new OutputStreamWriter(transferSocket.getOutputStream()));) {
+			
+			logger.log(Level.INFO, "t[" + reader.readLine() + "]");
+			
+			
+			writer.write("EHLO ");
+			writer.write(fromHost);
+			writer.write("\r\n");// EHLO
+			
+			writer.flush();
+			
+			String rec = null;
+//			boolean starttls = false;
+			do {
+				rec = reader.readLine();
+				logger.log(Level.INFO, "t[" + rec + "]");
+				if (rec.contains("STARTTLS")) {
+//					starttls = true;
+				}
+			} while (rec != null && rec.startsWith("250-"));
+			
+//			if (starttls) {
+//				writer2.write("STARTTLS\r\n");// STARTTLS
+//				writer2.flush();
+//				
+//				logger.log(Level.INFO,"t[" + reader.readLine() + "]");
+//				writer2.close();
+//				reader.close();
+//				//SSL処理開始
+//				SSLSocket sslSocket = (SSLSocket) ((SSLSocketFactory) SSLSocketFactory.getDefault()).createSocket(
+//	                       socket,
+//	                       socket.getInetAddress().getHostAddress(),
+//	                       socket.getPort(),
+//	                       true);
+////				sslSocket.setEnabledProtocols(sslSocket.getSupportedProtocols());
+////
+////				sslSocket.setEnabledCipherSuites(sslSocket.getSupportedCipherSuites());
+//				sslSocket.setEnableSessionCreation(true);
+//				sslSocket.setUseClientMode(true);
+//				logger.log(Level.INFO,"startHandshake");
+//				
+//				sslSocket.startHandshake();
+//				
+//				logger.log(Level.INFO,"reader2");
+//				BufferedReader reader2 = new BufferedReader(new InputStreamReader(sslSocket.getInputStream()));
+//
+//				logger.log(Level.INFO,"writer3");
+//				BufferedWriter writer3 = new BufferedWriter(new OutputStreamWriter(sslSocket.getOutputStream()));
+//
+//				
+//
+//				logger.log(Level.INFO,"ehlo");
+//				writer3.write("EHLO uchicom.com\r\n");//EHLO
+//				logger.log(Level.INFO,"flush");
+//				writer3.flush();
+//				
+//				rec = null;
+//				do {
+//					logger.log(Level.INFO,"readline");
+//					rec = reader2.readLine();
+//					logger.log(Level.INFO,"t[" + rec + "]");
+//				}while (rec != null && rec.startsWith("250-"));
+//				logger.log(Level.INFO,"mailFrom3:" + mailFrom);
+//				writer3.write("MAIL FROM: <" + mailFrom + ">\r\n");// MAIL FROM:
+//				writer3.flush();
+//				
+//				logger.log(Level.INFO,"t[" + reader2.readLine() + "]");
+//				
+//				writer3.write("RCPT TO: <" + address + ">\r\n");// RCPT TO:
+//				writer3.flush();
+//				
+//				logger.log(Level.INFO,"t[" + reader2.readLine() + "]");
+//				
+//				writer3.write("DATA\r\n");// DATA
+//				writer3.flush();
+//				
+//				logger.log(Level.INFO,"t[" + reader2.readLine() + "]");
+//				
+//				writer3.write(mail.getTitle());
+//				writer3.flush();
+//				
+//				writer3.write(".\r\n");
+//				writer3.flush();
+//				logger.log(Level.INFO,"t[" + reader2.readLine() + "]");
+//				
+//				writer3.write("QUIT\r\n");
+//				writer3.flush();
+//				logger.log(Level.INFO,"t[" + reader2.readLine() + "]");
+//				
+//				reader2.close();
+//				writer3.close();
+//			} else {
+			logger.log(Level.INFO, "mailFrom:" + fromMailAddress);
+			writer.write("MAIL FROM: <" + fromMailAddress + ">\r\n");// MAIL FROM:
+			writer.flush();
+			
+			logger.log(Level.INFO, "t[" + reader.readLine() + "]");
+			
+			writer.write("RCPT TO: <" + toMailAddress + ">\r\n");// RCPT TO:
+			writer.flush();
+			
+			logger.log(Level.INFO, "t[" + reader.readLine() + "]");
+			
+			writer.write("DATA\r\n");// DATA
+			writer.flush();
+			
+			logger.log(Level.INFO, "t[" + reader.readLine() + "]");
+			
+			writer.write(data);
+			writer.flush();
+			
+			writer.write(".\r\n");
+			writer.flush();
+			logger.log(Level.INFO, "t[" + reader.readLine() + "]");
+			
+			writer.write("QUIT\r\n");
+			writer.flush();
+			logger.log(Level.INFO, "t[" + reader.readLine() + "]");
+			
+//			}
+		}
+		logger.log(Level.INFO, "mx!:" + toHost);
 	}
 }

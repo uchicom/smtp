@@ -26,7 +26,7 @@ public class SmtpUtil {
 	 * @param cmd
 	 * @return
 	 */
-	public static boolean isEhelo(String cmd) {
+	public static boolean isEhlo(String cmd) {
 		return cmd.matches(Constants.REG_EXP_EHLO);
 	}
 

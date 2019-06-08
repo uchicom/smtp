@@ -1,7 +1,6 @@
 // (c) 2014 uchicom
 package com.uchicom.smtp;
 
-import com.uchicom.server.MultiSocketServer;
 import com.uchicom.server.PoolSocketServer;
 import com.uchicom.server.Server;
 import com.uchicom.server.SingleSocketServer;
