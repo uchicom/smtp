@@ -40,9 +40,9 @@ public interface Mail {
 	public void copy(List<MailBox> boxList, String senderHostName, String localHostName);
 
 	/**
-	 * タイトルを取得します.
+	 * データを取得します.
 	 *
 	 * @return
 	 */
-	public String getTitle();
+	public String getData();
 }

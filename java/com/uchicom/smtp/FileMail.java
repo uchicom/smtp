@@ -73,7 +73,7 @@ public class FileMail implements Mail {
 	}
 
 	@Override
-	public String getTitle() {
+	public String getData() {
 		// TODO 自動生成されたメソッド・スタブ
 		return null;
 	}

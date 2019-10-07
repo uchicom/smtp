@@ -57,7 +57,7 @@ public class MemoryMail implements Mail {
 	}
 
 	@Override
-	public String getTitle() {
+	public String getData() {
 		String mail = new String(baos.toByteArray());
 		return mail;
 	}
