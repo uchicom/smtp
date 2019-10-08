@@ -30,6 +30,8 @@ public interface Mail {
 	 * メールをコピーします.
 	 *
 	 * @param boxList メールボックスのリスト
+	 * @param senderHostName 送り元ホスト名
+	 * @param localHostName ローカルホスト名
 	 */
 	public void copy(List<MailBox> boxList, String senderHostName, String localHostName);
 

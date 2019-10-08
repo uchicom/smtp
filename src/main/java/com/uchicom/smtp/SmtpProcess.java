@@ -73,8 +73,7 @@ public class SmtpProcess implements ServerProcess {
 	 * コンストラクタ.
 	 *
 	 * @param parameter パラメータ情報
-	 * @param socket ソケット
-	 * @throws IOException ネットワークエラーが発生した場合
+	 * @param socket    ソケット
 	 */
 	public SmtpProcess(Parameter parameter, Socket socket) {
 		this.parameter = parameter;
@@ -84,7 +83,6 @@ public class SmtpProcess implements ServerProcess {
 	/**
 	 * SMTP処理を実行
 	 *
-	 * @throws IOException ネットワークエラーが発生した場合
 	 */
 	public void execute() {
 		this.senderAddress = socket.getInetAddress().getHostAddress();
