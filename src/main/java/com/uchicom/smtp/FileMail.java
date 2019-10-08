@@ -8,7 +8,6 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.util.List;
-import java.util.Map;
 
 /**
  * ファイル形式のメールクラス.
@@ -24,8 +23,8 @@ public class FileMail implements Mail {
 	/**
 	 * 引数指定のコンストラクタ.
 	 *
-	 * @param file
-	 * @throws IOException
+	 * @param file 出力ファイル
+	 * @throws IOException IOエラー
 	 */
 	public FileMail(File file) throws IOException {
 		File parent = file.getParentFile();
@@ -50,12 +49,6 @@ public class FileMail implements Mail {
 
 	public File getFile() {
 		return file;
-	}
-
-	@Override
-	public Map<String, String> getMap() {
-		// TODO 自動生成されたメソッド・スタブ
-		return null;
 	}
 
 	@Override

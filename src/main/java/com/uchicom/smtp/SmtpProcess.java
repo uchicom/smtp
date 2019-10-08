@@ -72,9 +72,9 @@ public class SmtpProcess implements ServerProcess {
 	/**
 	 * コンストラクタ.
 	 *
-	 * @param parameter
-	 * @param socket
-	 * @throws IOException
+	 * @param parameter パラメータ情報
+	 * @param socket ソケット
+	 * @throws IOException ネットワークエラーが発生した場合
 	 */
 	public SmtpProcess(Parameter parameter, Socket socket) {
 		this.parameter = parameter;
@@ -84,7 +84,7 @@ public class SmtpProcess implements ServerProcess {
 	/**
 	 * SMTP処理を実行
 	 *
-	 * @throws IOException
+	 * @throws IOException ネットワークエラーが発生した場合
 	 */
 	public void execute() {
 		this.senderAddress = socket.getInetAddress().getHostAddress();
@@ -415,9 +415,9 @@ public class SmtpProcess implements ServerProcess {
 	/**
 	 * DNS問合せでMXレコードを抽出します.
 	 * 
-	 * @param domainName
-	 * @return
-	 * @throws NamingException
+	 * @param domainName ドメイン名
+	 * @return MXホスト一覧
+	 * @throws NamingException エラーが初声死した場合
 	 */
 	public static String[] lookupMailHosts(String domainName) throws NamingException {
 

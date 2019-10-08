@@ -23,8 +23,8 @@ public class SmtpUtil {
 	/**
 	 * コマンドがEHLOかどうかをチェックする.
 	 *
-	 * @param cmd
-	 * @return
+	 * @param cmd コマンド
+	 * @return コマンドがEHLOの場合はtrue,それ以外はfalse
 	 */
 	public static boolean isEhlo(String cmd) {
 		return cmd.matches(Constants.REG_EXP_EHLO);
@@ -33,8 +33,8 @@ public class SmtpUtil {
 	/**
 	 * コマンドがHELOかどうかをチェックする.
 	 *
-	 * @param cmd
-	 * @return
+	 * @param cmd コマンド
+	 * @return コマンドがHELOの場合はtrue,それ以外はfalse
 	 */
 	public static boolean isHelo(String cmd) {
 		return cmd.matches(Constants.REG_EXP_HELO);
@@ -43,8 +43,8 @@ public class SmtpUtil {
 	/**
 	 * コマンドがRSETかどうかをチェックする.
 	 *
-	 * @param cmd
-	 * @return
+	 * @param cmd コマンド
+	 * @return コマンドがRSETの場合はtrue,それ以外はfalse
 	 */
 	public static boolean isRset(String cmd) {
 		return cmd.matches(Constants.REG_EXP_RSET);
@@ -53,8 +53,8 @@ public class SmtpUtil {
 	/**
 	 * コマンドがMAIL_FROMかどうかをチェックする.
 	 *
-	 * @param cmd
-	 * @return
+	 * @param cmd コマンド
+	 * @return コマンドがMAIL_FROMの場合はtrue,それ以外はfalse
 	 */
 	public static boolean isMailFrom(String cmd) {
 		return cmd.matches(Constants.REG_EXP_MAIL_FROM);
@@ -63,8 +63,8 @@ public class SmtpUtil {
 	/**
 	 * コマンドがRCPT_TOかどうかをチェックする.
 	 *
-	 * @param cmd
-	 * @return
+	 * @param cmd コマンド
+	 * @return コマンドがRCPT_TOの場合はtrue,それ以外はfalse
 	 */
 	public static boolean isRcptTo(String cmd) {
 		return cmd.matches(Constants.REG_EXP_RCPT_TO);
@@ -73,8 +73,8 @@ public class SmtpUtil {
 	/**
 	 * コマンドがDATAかどうかをチェックする.
 	 *
-	 * @param cmd
-	 * @return
+	 * @param cmd コマンド
+	 * @return コマンドがDATAの場合はtrue,それ以外はfalse
 	 */
 	public static boolean isData(String cmd) {
 		return cmd.matches(Constants.REG_EXP_DATA);
@@ -83,8 +83,8 @@ public class SmtpUtil {
 	/**
 	 * コマンドがQUITかどうかをチェックする.
 	 *
-	 * @param cmd
-	 * @return
+	 * @param cmd コマンド
+	 * @return コマンドがQUITの場合はtrue,それ以外はfalse
 	 */
 	public static boolean isQuit(String cmd) {
 		return cmd.matches(Constants.REG_EXP_QUIT);
@@ -93,8 +93,8 @@ public class SmtpUtil {
 	/**
 	 * コマンドがNOOPかどうかをチェックする.
 	 *
-	 * @param cmd
-	 * @return
+	 * @param cmd コマンド
+	 * @return コマンドがNOOPの場合はtrue,それ以外はfalse
 	 */
 	public static boolean isNoop(String cmd) {
 		return cmd.matches(Constants.REG_EXP_NOOP);
@@ -103,8 +103,8 @@ public class SmtpUtil {
 	/**
 	 * コマンドがVRFYかどうかをチェックする.
 	 *
-	 * @param cmd
-	 * @return
+	 * @param cmd コマンド
+	 * @return コマンドがVRFYの場合はtrue,それ以外はfalse
 	 */
 	public static boolean isVrfy(String cmd) {
 		return cmd.matches(Constants.REG_EXP_VRFY);
@@ -113,8 +113,8 @@ public class SmtpUtil {
 	/**
 	 * コマンドがEXPNかどうかをチェックする.
 	 *
-	 * @param cmd
-	 * @return
+	 * @param cmd コマンド
+	 * @return コマンドがEXPNの場合はtrue,それ以外はfalse
 	 */
 	public static boolean isExpn(String cmd) {
 		return cmd.matches(Constants.REG_EXP_EXPN);
@@ -123,8 +123,8 @@ public class SmtpUtil {
 	/**
 	 * コマンドがHELPかどうかをチェックする.
 	 *
-	 * @param cmd
-	 * @return
+	 * @param cmd コマンド
+	 * @return コマンドがHELPの場合はtrue,それ以外はfalse
 	 */
 	public static boolean isHelp(String cmd) {
 		return cmd.matches(Constants.REG_EXP_HELP);
@@ -136,8 +136,8 @@ public class SmtpUtil {
 	/**
 	 * ステータス行を出力する.
 	 *
-	 * @param ps
-	 * @param strings
+	 * @param ps 出力ストリーム
+	 * @param strings 文字列配列
 	 */
 	public static void recieveLine(PrintStream ps, String... strings) {
 		for (String string : strings) {
@@ -150,8 +150,8 @@ public class SmtpUtil {
 	/**
 	 * ファイルコピー処理
 	 *
-	 * @param from
-	 * @param to
+	 * @param from 元ファイル
+	 * @param to コピー先ファイル
 	 */
 	public static void copyFile(File from, File to, String mailAddress, String senderHostName, String localHostName) throws IOException {
 		try (@SuppressWarnings("resource")

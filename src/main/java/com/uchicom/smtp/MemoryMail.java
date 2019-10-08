@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.util.List;
-import java.util.Map;
 
 /**
  * メモリ形式のメールクラス.
@@ -20,6 +19,7 @@ public class MemoryMail implements Mail {
 
 	public MemoryMail() {
 	}
+
 	public MemoryMail(String mailAddress, String senderHostName, String localHostName) {
 
 	}
@@ -32,12 +32,6 @@ public class MemoryMail implements Mail {
 	@Override
 	public void delete() {
 
-	}
-
-	@Override
-	public Map<String, String> getMap() {
-		// TODO 自動生成されたメソッド・スタブ
-		return null;
 	}
 
 	@Override

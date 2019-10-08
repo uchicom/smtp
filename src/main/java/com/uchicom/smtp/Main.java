@@ -12,7 +12,7 @@ public class Main {
 	/**
 	 * アドレスとメールユーザーフォルダの格納フォルダを指定する.
 	 *
-	 * @param args
+	 * @param args パラメータ引数
 	 */
 	public static void main(String[] args) {
 		SmtpParameter parameter = new SmtpParameter(args);

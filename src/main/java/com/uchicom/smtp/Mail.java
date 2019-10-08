@@ -3,7 +3,6 @@ package com.uchicom.smtp;
 
 import java.io.Writer;
 import java.util.List;
-import java.util.Map;
 
 /**
  * メールのインターフェース
@@ -17,7 +16,7 @@ public interface Mail {
 	 * 受信メール書き込み用のライターを取得します.
 	 *
 	 * @return ライター
-	 * @throws Exception
+	 * @throws Exception エラーが発生した場合
 	 */
 	public Writer getWriter() throws Exception;
 
@@ -26,23 +25,18 @@ public interface Mail {
 	 */
 	public void delete();
 
-	/**
-	 *
-	 * @return
-	 */
-	public Map<String, String> getMap();
 
 	/**
 	 * メールをコピーします.
 	 *
-	 * @param boxList
+	 * @param boxList メールボックスのリスト
 	 */
 	public void copy(List<MailBox> boxList, String senderHostName, String localHostName);
 
 	/**
 	 * データを取得します.
 	 *
-	 * @return
+	 * @return メール本体Data情報
 	 */
 	public String getData();
 }

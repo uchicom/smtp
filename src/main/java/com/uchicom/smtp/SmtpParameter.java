@@ -27,7 +27,7 @@ public class SmtpParameter extends Parameter {
 	/**
 	 * 初期化
 	 * 
-	 * @return
+	 * @return 初期化に成功する場合はtrue,それ以外はfalseを返します.
 	 */
 	public boolean init() {
 		// メールボックスの基準フォルダ
