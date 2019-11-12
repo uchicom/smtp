@@ -165,13 +165,13 @@ public class SmtpProcess implements ServerProcess {
 								String[] hosts = lookupMailHosts(addresses[1]);
 								boolean send = false;
 								for (String mxHost : hosts) {
-									MailSender.send(parameter.get("host"), mailFrom, mxHost, address, mail.getData());
+									MailSender.sendMail(parameter.get("host"), mxHost, address, mail.getData());
 									send = true;
 									break;
 								}
 								// MXで送信できなかった場合は、ホスト名に送信する
 								if (!send) {
-									MailSender.send(parameter.get("host"), mailFrom, addresses[1], address,
+									MailSender.sendMail(parameter.get("host"), addresses[1], address,
 											mail.getData());
 								}
 							}

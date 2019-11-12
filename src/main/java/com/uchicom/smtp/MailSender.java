@@ -3,11 +3,13 @@ package com.uchicom.smtp;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Properties;
 import java.util.logging.Level;
@@ -341,6 +343,55 @@ public class MailSender {
 
 	static final String encoding = "base64";
 
+	/**
+	 * 既存のメールデータを送信する.
+	 * 
+	 * @param fromHost
+	 * @param toHost
+	 * @param toMailAddress
+	 * @param data
+	 * @throws UnknownHostException
+	 * @throws IOException
+	 */
+	public static void sendMail(String fromHost, String toHost, String toMailAddress, String data)
+			throws UnknownHostException, IOException {
+
+		try {
+			logger.log(Level.INFO, "fromHost[" + fromHost + "]");
+			logger.log(Level.INFO, "toHost[" + toHost + "]");
+			logger.log(Level.INFO, "toMailAddress[" + toMailAddress + "]");
+			Properties props = new Properties();
+			props.put("mail.smtp.host", toHost);
+			props.put("mail.smtp.port", 25);
+			props.put("mail.smtp.auth", "false");
+			props.put("mail.smtp.starttls.enable", true);
+			props.put("mail.smtp.connectiontimeout", "20000");
+			props.put("mail.smtp.timeout", "200000");
+
+			Session session = Session.getInstance(props);
+
+			MimeMessage message = new MimeMessage(session,
+					new ByteArrayInputStream(data.getBytes(StandardCharsets.UTF_8)));
+
+			Transport.send(message, new Address[] { new InternetAddress(toMailAddress) });
+
+		} catch (MessagingException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	/**
+	 * STARTTLSを許可してメールを送信する.
+	 * 
+	 * @param fromHost
+	 * @param fromMailAddress
+	 * @param toHost
+	 * @param toMailAddress
+	 * @param subject
+	 * @param content
+	 * @throws UnknownHostException
+	 * @throws IOException
+	 */
 	public static void sendMail(String fromHost, String fromMailAddress, String toHost, String toMailAddress,
 			String subject, String content) throws UnknownHostException, IOException {
 
@@ -354,7 +405,7 @@ public class MailSender {
 			Properties props = new Properties();
 			props.put("mail.smtp.host", toHost);
 			props.put("mail.smtp.port", 25);
-			props.put("mail.smtp.auth", "true");
+			props.put("mail.smtp.auth", "false");
 			props.put("mail.smtp.starttls.enable", true);
 			props.put("mail.smtp.connectiontimeout", "20000");
 			props.put("mail.smtp.timeout", "200000");
