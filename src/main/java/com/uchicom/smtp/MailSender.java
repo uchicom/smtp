@@ -9,9 +9,17 @@ import java.io.OutputStreamWriter;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.Base64;
+import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import javax.mail.Address;
+import javax.mail.Message;
+import javax.mail.MessagingException;
+import javax.mail.Session;
+import javax.mail.Transport;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeMessage;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
@@ -32,8 +40,7 @@ public class MailSender {
 	private String password;
 	private boolean ssl;
 
-	public MailSender(String fromHost, String host, int port, String enc, String user,
-			String password, boolean ssl) {
+	public MailSender(String fromHost, String host, int port, String enc, String user, String password, boolean ssl) {
 		this.fromHost = fromHost;
 		this.host = host;
 		this.port = port;
@@ -43,8 +50,7 @@ public class MailSender {
 		this.ssl = ssl;
 	}
 
-	public Socket createSocket()
-			throws Exception {
+	public Socket createSocket() throws Exception {
 		if (ssl) {
 //			KeyStore ks = KeyStore.getInstance("JKS");
 //
@@ -202,24 +208,22 @@ public class MailSender {
 			throw exception;
 		}
 	}
-	
-	public static void send(String fromHost, String fromMailAddress, String toHost, String toMailAddress, String data) throws UnknownHostException, IOException {
+
+	public static void send(String fromHost, String fromMailAddress, String toHost, String toMailAddress,
+			String subject, String data) throws UnknownHostException, IOException {
 
 		try (Socket transferSocket = new Socket(toHost, 25);
-				BufferedReader reader = new BufferedReader(
-						new InputStreamReader(transferSocket.getInputStream()));
-				BufferedWriter writer = new BufferedWriter(
-						new OutputStreamWriter(transferSocket.getOutputStream()));) {
-			
+				BufferedReader reader = new BufferedReader(new InputStreamReader(transferSocket.getInputStream()));
+				BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(transferSocket.getOutputStream()));) {
+
 			logger.log(Level.INFO, "t[" + reader.readLine() + "]");
-			
-			
+
 			writer.write("EHLO ");
 			writer.write(fromHost);
 			writer.write("\r\n");// EHLO
-			
+
 			writer.flush();
-			
+
 			String rec = null;
 //			boolean starttls = false;
 			do {
@@ -229,7 +233,7 @@ public class MailSender {
 //					starttls = true;
 				}
 			} while (rec != null && rec.startsWith("250-"));
-			
+
 //			if (starttls) {
 //				writer2.write("STARTTLS\r\n");// STARTTLS
 //				writer2.flush();
@@ -304,32 +308,75 @@ public class MailSender {
 			logger.log(Level.INFO, "mailFrom:" + fromMailAddress);
 			writer.write("MAIL FROM: <" + fromMailAddress + ">\r\n");// MAIL FROM:
 			writer.flush();
-			
+
 			logger.log(Level.INFO, "t[" + reader.readLine() + "]");
-			
+
 			writer.write("RCPT TO: <" + toMailAddress + ">\r\n");// RCPT TO:
 			writer.flush();
-			
+
 			logger.log(Level.INFO, "t[" + reader.readLine() + "]");
-			
+
 			writer.write("DATA\r\n");// DATA
 			writer.flush();
-			
+
 			logger.log(Level.INFO, "t[" + reader.readLine() + "]");
-			
+
 			writer.write(data);
 			writer.flush();
-			
+
 			writer.write(".\r\n");
 			writer.flush();
 			logger.log(Level.INFO, "t[" + reader.readLine() + "]");
-			
+
 			writer.write("QUIT\r\n");
 			writer.flush();
 			logger.log(Level.INFO, "t[" + reader.readLine() + "]");
-			
+
 //			}
 		}
 		logger.log(Level.INFO, "mx!:" + toHost);
 	}
+
+	static final String charset = "UTF-8";
+
+	static final String encoding = "base64";
+
+	public static void sendMail(String fromHost, String fromMailAddress, String toHost, String toMailAddress,
+			String subject, String content) throws UnknownHostException, IOException {
+
+		try {
+			logger.log(Level.INFO, "fromHost[" + fromHost + "]");
+			logger.log(Level.INFO, "fromMailAddress[" + fromMailAddress + "]");
+			logger.log(Level.INFO, "toHost[" + toHost + "]");
+			logger.log(Level.INFO, "toMailAddress[" + toMailAddress + "]");
+			logger.log(Level.INFO, "subject[" + subject + "]");
+			logger.log(Level.INFO, "content[" + content + "]");
+			Properties props = new Properties();
+			props.put("mail.smtp.host", toHost);
+			props.put("mail.smtp.port", 25);
+			props.put("mail.smtp.auth", "true");
+			props.put("mail.smtp.starttls.enable", true);
+			props.put("mail.smtp.connectiontimeout", "20000");
+			props.put("mail.smtp.timeout", "200000");
+
+			Session session = Session.getInstance(props);
+
+			MimeMessage message = new MimeMessage(session);
+
+			message.setFrom(new InternetAddress(fromMailAddress));
+			message.setReplyTo(new Address[] { new InternetAddress(fromMailAddress) });
+			message.setRecipient(Message.RecipientType.TO, new InternetAddress(toMailAddress));
+
+			message.setSubject(subject, charset);
+			message.setText(content, charset);
+
+			message.setHeader("Content-Transfer-Encoding", encoding);
+
+			Transport.send(message);
+
+		} catch (MessagingException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
 }
