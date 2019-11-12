@@ -209,8 +209,8 @@ public class MailSender {
 		}
 	}
 
-	public static void send(String fromHost, String fromMailAddress, String toHost, String toMailAddress,
-			String subject, String data) throws UnknownHostException, IOException {
+	public static void send(String fromHost, String fromMailAddress, String toHost, String toMailAddress, String data)
+			throws UnknownHostException, IOException {
 
 		try (Socket transferSocket = new Socket(toHost, 25);
 				BufferedReader reader = new BufferedReader(new InputStreamReader(transferSocket.getInputStream()));
