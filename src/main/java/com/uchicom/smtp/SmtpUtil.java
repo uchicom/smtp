@@ -155,6 +155,7 @@ public class SmtpUtil {
 	 * @param mailAddress Eメールアドレス
 	 * @param senderHostName 送信元ホスト名
 	 * @param localHostName ローカルホスト名
+	 * @throws IOException 通信エラーの場合
 	 */
 	public static void copyFile(File from, File to, String mailAddress, String senderHostName, String localHostName) throws IOException {
 		try (@SuppressWarnings("resource")
