@@ -152,6 +152,9 @@ public class SmtpUtil {
 	 *
 	 * @param from 元ファイル
 	 * @param to コピー先ファイル
+	 * @param mailAddress Eメールアドレス
+	 * @param senderHostName 送信元ホスト名
+	 * @param localHostName ローカルホスト名
 	 */
 	public static void copyFile(File from, File to, String mailAddress, String senderHostName, String localHostName) throws IOException {
 		try (@SuppressWarnings("resource")
