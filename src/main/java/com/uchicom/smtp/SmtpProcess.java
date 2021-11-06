@@ -194,7 +194,7 @@ public class SmtpProcess implements ServerProcess {
 							SmtpUtil.recieveLine(ps, Constants.RECV_250_OK);
 						}
 						init();
-					} else if (line.indexOf(0) == '.') {
+					} else if (line.charAt(0) == '.') {
 						writer.write(line.substring(1));
 						writer.write("\r\n");
 					} else {
