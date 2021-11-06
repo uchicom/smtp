@@ -346,12 +346,12 @@ public class MailSender {
 	/**
 	 * 既存のメールデータを送信する.
 	 * 
-	 * @param fromHost
-	 * @param toHost
-	 * @param toMailAddress
-	 * @param data
-	 * @throws UnknownHostException
-	 * @throws IOException
+	 * @param fromHost 送信元ホスト名
+	 * @param toHost 送信先ホスト名
+	 * @param toMailAddress 送信先Eメールアドレス
+	 * @param data 送信データ
+	 * @throws UnknownHostException ホストが見つからない場合
+	 * @throws IOException 通信エラーの場合
 	 */
 	public static void sendMail(String fromHost, String toHost, String toMailAddress, String data)
 			throws UnknownHostException, IOException {
@@ -384,14 +384,14 @@ public class MailSender {
 	/**
 	 * STARTTLSを許可してメールを送信する.
 	 * 
-	 * @param fromHost
-	 * @param fromMailAddress
-	 * @param toHost
-	 * @param toMailAddress
-	 * @param subject
-	 * @param content
-	 * @throws UnknownHostException
-	 * @throws IOException
+	 * @param fromHost 送信元ホスト名
+	 * @param fromMailAddress 送信元Eメールアドレス
+	 * @param toHost 送信先ホスト名
+	 * @param toMailAddress 送信先Eメールアドレス
+	 * @param subject 件名
+	 * @param content 本文
+     * @throws UnknownHostException ホストが見つからない場合
+     * @throws IOException 通信エラーの場合
 	 */
 	public static void sendMail(String fromHost, String fromMailAddress, String toHost, String toMailAddress,
 			String subject, String content) throws UnknownHostException, IOException {
