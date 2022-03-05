@@ -1,25 +1,20 @@
-// (c) 2017 uchicom
+// (C) 2017 uchicom
 package com.uchicom.smtp;
 
-import static org.junit.Assert.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Properties;
+import org.junit.jupiter.api.Test;
 
-import org.junit.Test;
-
-/**
- * @author uchicom: Shigeki Uchiyama
- *
- */
+/** @author uchicom: Shigeki Uchiyama */
 public class SmtpProcessTest {
 
-	@Test
-	public void mailFromCheck() {
-		Properties prop = new Properties();
-		prop.setProperty("*@domain.com", "true");
-		String mailFrom = "test@domain.com";
-		String domain = prop.getProperty("*" + mailFrom.substring(mailFrom.indexOf('@')));
-		assertTrue(Boolean.parseBoolean(domain));
-	}
-
+  @Test
+  public void mailFromCheck() {
+    Properties prop = new Properties();
+    prop.setProperty("*@domain.com", "true");
+    String mailFrom = "test@domain.com";
+    String domain = prop.getProperty("*" + mailFrom.substring(mailFrom.indexOf('@')));
+    assertThat(Boolean.parseBoolean(domain)).isTrue();
+  }
 }
