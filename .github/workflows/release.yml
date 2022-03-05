@@ -36,6 +36,17 @@ jobs:
       with:
         tag_name: ${{ steps.project.outputs.version }}
         release_name: Release v${{ steps.project.outputs.version }}
+        body: |
+          # Maven Central
+          https://search.maven.org/artifact/com.uchicom/${{ steps.project.outputs.name }}/${{ steps.project.outputs.version }}/jar
+          # Apache Maven
+          ```
+          <dependency>
+            <groupId>com.uchicom</groupId>
+            <artifactId>${{ steps.project.outputs.name }}</artifactId>
+            <version>${{ steps.project.outputs.version }}</version>
+          </dependency>
+          ```
         draft: false
         prerelease: false
     - name: Upload Release Action
