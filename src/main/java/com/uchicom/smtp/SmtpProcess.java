@@ -173,7 +173,7 @@ public class SmtpProcess implements ServerProcess {
                       mxHost,
                       address,
                       mail.getData(),
-                      getDkimPrivateKeyFile());
+                      parameter.getFile("dkim"));
                   send = true;
                   break;
                 }
@@ -184,7 +184,7 @@ public class SmtpProcess implements ServerProcess {
                       addresses[1],
                       address,
                       mail.getData(),
-                      getDkimPrivateKeyFile());
+                      parameter.getFile("dkim"));
                 }
               }
             } else {
@@ -535,9 +535,5 @@ public class SmtpProcess implements ServerProcess {
       }
     }
     return add;
-  }
-
-  File getDkimPrivateKeyFile() {
-    return parameter.is("dkim") ? parameter.getFile("dkim") : null;
   }
 }
