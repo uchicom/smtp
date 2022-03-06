@@ -14,7 +14,6 @@ import java.security.Signature;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.Base64;
 import java.util.List;
@@ -151,6 +150,6 @@ public class DkimBuilder {
   }
 
   long getEpocSecond(LocalDateTime localDateTime) {
-    return localDateTime.toEpochSecond(ZoneOffset.of(ZoneId.systemDefault().getId()));
+    return localDateTime.toEpochSecond(ZoneOffset.UTC);
   }
 }
