@@ -11,6 +11,7 @@ import static org.mockito.Mockito.spy;
 import com.uchicom.smtp.MockTest;
 import java.io.ByteArrayInputStream;
 import java.security.PrivateKey;
+import java.time.LocalDateTime;
 import javax.mail.Address;
 import javax.mail.Message;
 import javax.mail.Session;
@@ -119,4 +120,15 @@ public class DkimBuilderTest extends MockTest {
 
   @Test
   public void getSign() {}
+
+  @Test
+  public void getEpocSecond() {
+
+    // mock
+    LocalDateTime now = LocalDateTime.of(2022, 3, 7, 6, 39, 0);
+    // test method
+    long result = builder.getEpocSecond(now);
+    // assert
+    assertThat(result).isEqualTo(1646635140L);
+  }
 }
