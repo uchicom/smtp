@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Base64;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
@@ -91,10 +92,18 @@ public class DkimBuilder {
     StringBuilder builder = new StringBuilder(1024);
     builder
         .append("subject:")
-        .append(message.getHeader("Subject", null).trim())
+        .append(
+            Optional.ofNullable(message.getHeader("Subject", null))
+                .orElse("")
+                .replaceAll("[ \r\n\t]+", " ")
+                .trim())
         .append("\r\n")
         .append("from:")
-        .append(message.getHeader("From", null).trim())
+        .append(
+            Optional.ofNullable(message.getHeader("From", null))
+                .orElse("")
+                .replaceAll("[ \r\n\t]+", " ")
+                .trim())
         .append("\r\n");
     return builder.toString().replaceAll(" +", " ");
   }

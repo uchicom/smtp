@@ -79,11 +79,11 @@ public class DkimBuilderTest extends MockTest {
   public void normalizeHeader() throws Exception {
     // mock
     MimeMessage message = mock(MimeMessage.class);
-    doReturn(" su   b ").when(message).getHeader("Subject", null);
+    doReturn(" su \r\n  \t b ").when(message).getHeader("Subject", null);
     Address toAddress = mock(Address.class);
     doReturn(new Address[] {toAddress}).when(message).getRecipients(Message.RecipientType.TO);
     Address fromAddress = mock(Address.class);
-    doReturn(" from  @from ").when(message).getHeader("From", null);
+    doReturn(" from \r\n \t @from ").when(message).getHeader("From", null);
     doReturn(new Address[] {fromAddress}).when(message).getFrom();
     // test method
     builder.message(message);
