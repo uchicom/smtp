@@ -64,7 +64,7 @@ public class DkimBuilder {
         .append("d=") // ドメイン名
         .append(fromHost)
         .append("; ")
-        .append("h=message-id:subject:date:to:from; ") // 署名したヘッダ
+        .append("h=message-id:subject:to:from; ") // 署名したヘッダ
         .append("s=") // セレクタ
         .append(fromHost)
         .append("; ")
@@ -96,9 +96,6 @@ public class DkimBuilder {
         .append("\r\n")
         .append("subject:")
         .append(message.getSubject().trim())
-        .append("\r\n")
-        .append("date:")
-        .append(message.getHeader("Date", null).trim())
         .append("\r\n")
         .append("to:")
         .append(message.getRecipients(Message.RecipientType.TO)[0].toString().trim())

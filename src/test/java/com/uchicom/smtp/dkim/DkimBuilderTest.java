@@ -48,7 +48,7 @@ public class DkimBuilderTest extends MockTest {
                 + "bh=bh1; "
                 + "c=relaxed/relaxed; "
                 + "d=fromHost; "
-                + "h=message-id:subject:date:to:from; "
+                + "h=message-id:subject:to:from; "
                 + "s=fromHost; "
                 + "t=10000000");
   }
@@ -81,7 +81,6 @@ public class DkimBuilderTest extends MockTest {
     MimeMessage message = mock(MimeMessage.class);
     doReturn("messageId ").when(message).getMessageID();
     doReturn("sub ").when(message).getSubject();
-    doReturn("1234 ").when(message).getHeader("Date", null);
     Address toAddress = mock(Address.class);
     doReturn("to@to ").when(toAddress).toString();
     doReturn(new Address[] {toAddress}).when(message).getRecipients(Message.RecipientType.TO);
@@ -94,11 +93,7 @@ public class DkimBuilderTest extends MockTest {
     // assert
     assertThat(result)
         .isEqualTo(
-            "message-id:messageId\r\n"
-                + "subject:sub\r\n"
-                + "date:1234\r\n"
-                + "to:to@to\r\n"
-                + "from:from@from\r\n");
+            "message-id:messageId\r\n" + "subject:sub\r\n" + "to:to@to\r\n" + "from:from@from\r\n");
   }
 
   @Test
