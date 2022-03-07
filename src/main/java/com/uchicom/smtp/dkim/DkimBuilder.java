@@ -18,7 +18,6 @@ import java.time.ZoneOffset;
 import java.util.Base64;
 import java.util.List;
 import java.util.stream.Collectors;
-import javax.mail.Message;
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
 
@@ -64,7 +63,7 @@ public class DkimBuilder {
         .append("d=") // ドメイン名
         .append(fromHost)
         .append("; ")
-        .append("h=subject:to:from; ") // 署名したヘッダ
+        .append("h=subject:from; ") // 署名したヘッダ
         .append("s=") // セレクタ
         .append(fromHost)
         .append("; ")
@@ -92,13 +91,10 @@ public class DkimBuilder {
     StringBuilder builder = new StringBuilder(1024);
     builder
         .append("subject:")
-        .append(message.getSubject().trim())
-        .append("\r\n")
-        .append("to:")
-        .append(message.getRecipients(Message.RecipientType.TO)[0].toString().trim())
+        .append(message.getHeader("Subject", null).trim())
         .append("\r\n")
         .append("from:")
-        .append(message.getFrom()[0].toString().trim())
+        .append(message.getHeader("From", null).trim())
         .append("\r\n");
     return builder.toString().replaceAll(" +", " ");
   }

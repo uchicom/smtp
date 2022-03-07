@@ -48,7 +48,7 @@ public class DkimBuilderTest extends MockTest {
                 + "bh=bh1; "
                 + "c=relaxed/relaxed; "
                 + "d=fromHost; "
-                + "h=subject:to:from; "
+                + "h=subject:from; "
                 + "s=fromHost; "
                 + "t=10000000");
   }
@@ -79,18 +79,17 @@ public class DkimBuilderTest extends MockTest {
   public void normalizeHeader() throws Exception {
     // mock
     MimeMessage message = mock(MimeMessage.class);
-    doReturn(" su   b ").when(message).getSubject();
+    doReturn(" su   b ").when(message).getHeader("Subject", null);
     Address toAddress = mock(Address.class);
-    doReturn(" to@   to ").when(toAddress).toString();
     doReturn(new Address[] {toAddress}).when(message).getRecipients(Message.RecipientType.TO);
     Address fromAddress = mock(Address.class);
-    doReturn(" from   @from ").when(fromAddress).toString();
+    doReturn(" from  @from ").when(message).getHeader("From", null);
     doReturn(new Address[] {fromAddress}).when(message).getFrom();
     // test method
     builder.message(message);
     String result = builder.normalizeHeader();
     // assert
-    assertThat(result).isEqualTo("subject:su b\r\n" + "to:to@ to\r\n" + "from:from @from\r\n");
+    assertThat(result).isEqualTo("subject:su b\r\n" + "from:from @from\r\n");
   }
 
   @Test
