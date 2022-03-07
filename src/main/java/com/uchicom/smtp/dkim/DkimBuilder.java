@@ -70,7 +70,7 @@ public class DkimBuilder {
         .append("t=") // 秒数
         .append(getEpocSecond(LocalDateTime.now()));
     String dkim = builder.toString();
-    String b = createB(normalizeHeader(), dkim);
+    String b = createB(normalizeHeader(), "dkim-signature:" + dkim);
     return dkim.replace("b=;", "b=" + b + ";");
   }
 
@@ -100,7 +100,8 @@ public class DkimBuilder {
   }
 
   String normalizeBody() throws IOException, MessagingException {
-    try (BufferedReader br = new BufferedReader(new InputStreamReader(message.getInputStream()))) {
+    try (BufferedReader br =
+        new BufferedReader(new InputStreamReader(message.getRawInputStream()))) {
       StringBuilder builder = new StringBuilder(1024);
       List<String> lineList =
           br.lines()
@@ -121,6 +122,7 @@ public class DkimBuilder {
         builder.append(lineList.get(i));
         builder.append("\r\n");
       }
+      System.out.println(builder.toString());
       return builder.toString();
     }
   }

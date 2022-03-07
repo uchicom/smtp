@@ -33,7 +33,7 @@ public class DkimBuilderTest extends MockTest {
     // mock
     doReturn("normalizeBody").when(builder).normalizeBody();
     doReturn("normalizeHeader").when(builder).normalizeHeader();
-    doReturn("bh1").when(builder).createBh(anyString());
+    doReturn("bh1").when(builder).createBh("normalizeBody");
     doReturn("b2").when(builder).createB(anyString(), anyString());
     doReturn(10000000L).when(builder).getEpocSecond(any());
     // test method
@@ -98,7 +98,7 @@ public class DkimBuilderTest extends MockTest {
     // mock
     MimeMessage message = spy(new MimeMessage((Session) null));
     String body = "a  b  c  d   \r\n" + "e  f  g  h   \r\n" + "  a  b \r\n" + "\r\n\r\n";
-    doReturn(new ByteArrayInputStream(body.getBytes())).when(message).getInputStream();
+    doReturn(new ByteArrayInputStream(body.getBytes())).when(message).getRawInputStream();
     // test method
     builder.message(message);
     String result = builder.normalizeBody();
