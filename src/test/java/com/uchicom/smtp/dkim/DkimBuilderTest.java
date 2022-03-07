@@ -48,7 +48,7 @@ public class DkimBuilderTest extends MockTest {
                 + "bh=bh1; "
                 + "c=relaxed/relaxed; "
                 + "d=fromHost; "
-                + "h=message-id:subject:to:from; "
+                + "h=subject:to:from; "
                 + "s=fromHost; "
                 + "t=10000000");
   }
@@ -79,21 +79,18 @@ public class DkimBuilderTest extends MockTest {
   public void normalizeHeader() throws Exception {
     // mock
     MimeMessage message = mock(MimeMessage.class);
-    doReturn("messageId ").when(message).getMessageID();
-    doReturn("sub ").when(message).getSubject();
+    doReturn(" su   b ").when(message).getSubject();
     Address toAddress = mock(Address.class);
-    doReturn("to@to ").when(toAddress).toString();
+    doReturn(" to@   to ").when(toAddress).toString();
     doReturn(new Address[] {toAddress}).when(message).getRecipients(Message.RecipientType.TO);
     Address fromAddress = mock(Address.class);
-    doReturn("from@from ").when(fromAddress).toString();
+    doReturn(" from   @from ").when(fromAddress).toString();
     doReturn(new Address[] {fromAddress}).when(message).getFrom();
     // test method
     builder.message(message);
     String result = builder.normalizeHeader();
     // assert
-    assertThat(result)
-        .isEqualTo(
-            "message-id:messageId\r\n" + "subject:sub\r\n" + "to:to@to\r\n" + "from:from@from\r\n");
+    assertThat(result).isEqualTo("subject:su b\r\n" + "to:to@ to\r\n" + "from:from @from\r\n");
   }
 
   @Test

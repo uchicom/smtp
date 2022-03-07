@@ -64,7 +64,7 @@ public class DkimBuilder {
         .append("d=") // ドメイン名
         .append(fromHost)
         .append("; ")
-        .append("h=message-id:subject:to:from; ") // 署名したヘッダ
+        .append("h=subject:to:from; ") // 署名したヘッダ
         .append("s=") // セレクタ
         .append(fromHost)
         .append("; ")
@@ -91,9 +91,6 @@ public class DkimBuilder {
   String normalizeHeader() throws MessagingException {
     StringBuilder builder = new StringBuilder(1024);
     builder
-        .append("message-id:")
-        .append(message.getMessageID().trim())
-        .append("\r\n")
         .append("subject:")
         .append(message.getSubject().trim())
         .append("\r\n")
@@ -103,7 +100,7 @@ public class DkimBuilder {
         .append("from:")
         .append(message.getFrom()[0].toString().trim())
         .append("\r\n");
-    return builder.toString();
+    return builder.toString().replaceAll(" +", " ");
   }
 
   String normalizeBody() throws IOException, MessagingException {
