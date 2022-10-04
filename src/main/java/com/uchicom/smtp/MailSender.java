@@ -372,6 +372,7 @@ public class MailSender {
       props.put("mail.smtp.port", 25);
       props.put("mail.smtp.auth", "false");
       props.put("mail.smtp.starttls.enable", true);
+      props.put("mail.smtps.ssl.trust", toHost);
       props.put("mail.smtp.ssl.protocols", "TLSv1.2");
       props.put("mail.smtp.connectiontimeout", "20000");
       props.put("mail.smtp.timeout", "200000");
@@ -435,6 +436,7 @@ public class MailSender {
       props.put("mail.smtp.port", 25);
       props.put("mail.smtp.auth", "false");
       props.put("mail.smtp.starttls.enable", true);
+      props.put("mail.smtps.ssl.trust", toHost);
       props.put("mail.smtp.connectiontimeout", "20000");
       props.put("mail.smtp.timeout", "200000");
 
