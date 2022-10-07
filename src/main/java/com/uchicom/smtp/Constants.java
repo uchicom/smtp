@@ -15,6 +15,8 @@ public class Constants {
   public static String IGNORE_RESULT_FILE_NAME = ".ignore_result";
   public static String SPAM_DIR = ".spam";
   // SMTP返却メッセージ
+  /** 返却メッセージ(220(STARTTLS開始)) */
+  public static String RECV_220 = "220";
   /** 返却メッセージ(250(成功応答)) */
   public static String RECV_250 = "250";
   /** 返却メッセージ(250(成功応答)) */
@@ -37,6 +39,8 @@ public class Constants {
   // SMTPコマンド正規表現
   /** EHLOの正規表現(大文字小文字後続スペース) */
   public static String REG_EXP_EHLO = "^ *[Ee][Hh][Ll][Oo] +[^ ]+ *$";
+  /** STARTTLSの正規表現(大文字小文字後続スペース) */
+  public static String REG_EXP_START_TLS = "^ *[Ss][Tt][Aa][Rr][Tt][Tt][Ll][Ss] *$";
   /** HELOの正規表現(大文字小文字後続スペース) */
   public static String REG_EXP_HELO = "^ *[Hh][Ee][Ll][Oo] +[^ ]+ *$";
   /** MAIL FROM:アドレスの正規表現(大文字小文字後続スペース) */

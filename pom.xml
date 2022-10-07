@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.uchicom</groupId>
 	<artifactId>smtp</artifactId>
-	<version>0.1.13</version>
+	<version>0.1.14</version>
 	<packaging>jar</packaging>
 	<name>smtp</name>
 	<description>smtp server</description>
@@ -289,7 +289,6 @@
 			<groupId>com.sun.mail</groupId>
 			<artifactId>javax.mail</artifactId>
 			<version>1.6.2</version>
-            <scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>javax.activation</groupId>
