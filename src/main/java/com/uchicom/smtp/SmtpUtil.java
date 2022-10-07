@@ -30,6 +30,16 @@ public class SmtpUtil {
   }
 
   /**
+   * コマンドがSTARTTLSかどうかをチェックする.
+   *
+   * @param cmd コマンド
+   * @return コマンドがSTARTTLSの場合はtrue,それ以外はfalse
+   */
+  public static boolean isStartTls(String cmd) {
+    return cmd.matches(Constants.REG_EXP_START_TLS);
+  }
+
+  /**
    * コマンドがHELOかどうかをチェックする.
    *
    * @param cmd コマンド

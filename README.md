@@ -5,3 +5,21 @@
 [![Java CI with Maven](https://github.com/uchicom/smtp/actions/workflows/package.yml/badge.svg)](https://github.com/uchicom/smtp/actions/workflows/package.yml)
 
 smtp server
+
+## mvn
+### サーバ起動
+```
+mvn exec:java "-Dexec.mainClass=com.uchicom.smtp.Main"
+
+mvn exec:java "-Dexec.mainClass=com.uchicom.smtp.Main" -Dexec.args="-port 8025"
+
+mvn exec:java "-Dexec.mainClass=com.uchicom.smtp.Main" -Dexec.args="-port 8025 -keyStoreName keystore -keyStorePass changeit"
+```
+```
+mvn exec:java "-Dexec.mainClass=com.uchicom.smtp.TestMain"
+```
+
+## keytool
+```
+keytool -genkey -alias smtp -keyalg RSA -keystore keystore -storepass changeit
+```

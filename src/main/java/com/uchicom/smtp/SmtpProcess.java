@@ -7,6 +7,7 @@ import com.uchicom.util.Parameter;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -14,6 +15,12 @@ import java.io.PrintStream;
 import java.io.Writer;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.security.KeyManagementException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.UnrecoverableKeyException;
+import java.security.cert.CertificateException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -29,6 +36,10 @@ import javax.naming.NamingException;
 import javax.naming.directory.Attribute;
 import javax.naming.directory.Attributes;
 import javax.naming.directory.InitialDirContext;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
 
 /**
  * SMTP処理クラス. 送信処理認証後は、他サーバに直接接続してプロキシ―のような処理をする。
@@ -83,8 +94,11 @@ public class SmtpProcess implements ServerProcess {
     this.senderAddress = socket.getInetAddress().getHostAddress();
     logger.log(Level.INFO, String.valueOf(senderAddress));
     Writer writer = null;
-    try (BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-        PrintStream ps = new PrintStream(socket.getOutputStream()); ) {
+    BufferedReader br = null;
+    PrintStream ps = null;
+    try {
+      br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+      ps = new PrintStream(socket.getOutputStream());
       SmtpUtil.recieveLine(ps, "220 ", parameter.get("host"), " SMTP");
       String line = br.readLine();
       // HELO
@@ -221,19 +235,34 @@ public class SmtpProcess implements ServerProcess {
             writer.write(line);
             writer.write("\r\n");
           }
-        } else if (!bHelo && (SmtpUtil.isEhlo(line) || SmtpUtil.isHelo(line))) {
+        } else if ((SmtpUtil.isEhlo(line) || SmtpUtil.isHelo(line))) {
           bHelo = true;
           String[] lines = line.split(" +");
           helo = lines[1];
           if (parameter.is("transfer")) {
             SmtpUtil.recieveLine(
                 ps, Constants.RECV_250, "-", parameter.get("host"), " Hello ", senderAddress);
+            if (!(socket instanceof SSLSocket) && hasKeyStore()) {
+              SmtpUtil.recieveLine(ps, Constants.RECV_250, "-STARTTLS");
+            }
             SmtpUtil.recieveLine(ps, Constants.RECV_250, " AUTH LOGIN"); // TODO CRAM-MD5も追加したい
           } else {
-            SmtpUtil.recieveLine(
-                ps, Constants.RECV_250, " ", parameter.get("host"), " Hello ", senderAddress);
+
+            if ((socket instanceof SSLSocket) || !hasKeyStore()) {
+              SmtpUtil.recieveLine(
+                  ps, Constants.RECV_250, " ", parameter.get("host"), " Hello ", senderAddress);
+            } else {
+              SmtpUtil.recieveLine(
+                  ps, Constants.RECV_250, "-", parameter.get("host"), " Hello ", senderAddress);
+              SmtpUtil.recieveLine(ps, Constants.RECV_250, " STARTTLS");
+            }
           }
           init();
+        } else if (SmtpUtil.isStartTls(line)) {
+          SmtpUtil.recieveLine(ps, Constants.RECV_220, " Go ahead");
+          socket = startTls();
+          br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+          ps = new PrintStream(socket.getOutputStream());
         } else if (SmtpUtil.isAuthLogin(line) && parameter.is("transfer")) {
           authStatus = AuthenticationStatus.USER;
           SmtpUtil.recieveLine(ps, Constants.RECV_334, " VXNlcm5hbWU6");
@@ -352,6 +381,16 @@ public class SmtpProcess implements ServerProcess {
     } catch (Throwable e) {
       e.printStackTrace();
     } finally {
+      if (br != null) {
+        try {
+          br.close();
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
+      }
+      if (ps != null) {
+        ps.close();
+      }
       if (mail != null) {
         // メッセージコピー処理
         try {
@@ -535,5 +574,32 @@ public class SmtpProcess implements ServerProcess {
       }
     }
     return add;
+  }
+
+  SSLSocket startTls()
+      throws KeyStoreException, NoSuchAlgorithmException, CertificateException,
+          FileNotFoundException, IOException, UnrecoverableKeyException, KeyManagementException {
+    String password = parameter.get("keyStorePass");
+    KeyStore ks = KeyStore.getInstance("JKS");
+    ks.load(new FileInputStream(parameter.get("keyStoreName")), password.toCharArray());
+    KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
+    kmf.init(ks, password.toCharArray());
+    SSLContext sslContext = SSLContext.getInstance("TLS");
+    sslContext.init(kmf.getKeyManagers(), null, null);
+
+    SSLSocket sslSocket =
+        (SSLSocket)
+            ((SSLSocketFactory) sslContext.getSocketFactory())
+                .createSocket(
+                    socket, socket.getInetAddress().getHostAddress(), socket.getPort(), true);
+
+    sslSocket.setUseClientMode(false);
+    sslSocket.startHandshake();
+
+    return sslSocket;
+  }
+
+  boolean hasKeyStore() {
+    return parameter.get("keyStoreName") != null && parameter.get("keyStorePass") != null;
   }
 }
