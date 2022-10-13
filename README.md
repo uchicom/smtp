@@ -23,3 +23,36 @@ mvn exec:java "-Dexec.mainClass=com.uchicom.smtp.TestMain"
 ```
 keytool -genkey -alias smtp -keyalg RSA -keystore keystore -storepass changeit
 ```
+
+## .smtp.yml
+```
+account:
+password:
+webhook:
+send:
+	method: post
+	url: https://dokosoko/share/api/webhook/payjp
+	header:
+	Content-Type: application/json
+	Webhook-Token: smtp_webhook_0123456789
+	body:
+	template: {title:"${subject}", content:"${content:1}"} // :1を指定するとmatch
+	parameter:
+		subject:
+		extract: subject
+		match: ^abc$
+		content: ^abc(def)gh$ // 括弧を
+	query:
+	... // bodyと同じ形式
+detection: // 配列はorで
+	- subject: and 条件
+	content:
+	from: dokosoko@mail.com
+	to: to@dokosoko.com
+	cc:
+	- subject:
+	content:
+	from:
+	to:
+	cc:
+```
