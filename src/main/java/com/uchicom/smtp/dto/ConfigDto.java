@@ -2,7 +2,6 @@
 package com.uchicom.smtp.dto;
 
 public class ConfigDto {
-  String password;
-  SendDto send;
-  WebhookDto webhook;
+  public SendDto send;
+  public WebhookDto webhook;
 }

@@ -4,6 +4,6 @@ package com.uchicom.smtp.dto;
 import java.util.Map;
 
 public class BodyDto {
-  String template;
-  Map<String, ParameterDto> parameter;
+  public String template;
+  public Map<String, ParameterDto> parameter;
 }

@@ -10,7 +10,8 @@ import java.util.regex.Pattern;
  */
 public class Constants {
 
-  public static String PASSWORD_FILE_NAME = ".smtp.yml";
+  public static String PASSWORD_FILE_NAME = ".smtp";
+  public static String WEBHOOK_FILE_NAME = ".webhook.yml";
   public static String IGNORE_FILE_NAME = ".ignore";
   public static String IGNORE_RESULT_FILE_NAME = ".ignore_result";
   public static String SPAM_DIR = ".spam";
