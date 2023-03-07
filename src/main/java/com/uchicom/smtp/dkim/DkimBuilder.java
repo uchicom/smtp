@@ -26,6 +26,7 @@ public class DkimBuilder {
   MimeMessage message;
   String fromHost;
   PrivateKey privateKey;
+  String selector;
 
   public DkimBuilder() {}
 
@@ -36,6 +37,11 @@ public class DkimBuilder {
 
   public DkimBuilder fromHost(String fromHost) {
     this.fromHost = fromHost;
+    return this;
+  }
+
+  public DkimBuilder selector(String selector) {
+    this.selector = selector;
     return this;
   }
 
@@ -66,7 +72,7 @@ public class DkimBuilder {
         .append("; ")
         .append("h=subject:from; ") // 署名したヘッダ
         .append("s=") // セレクタ
-        .append(fromHost)
+        .append(selector)
         .append("; ")
         .append("t=") // 秒数
         .append(getEpocSecond(LocalDateTime.now()));

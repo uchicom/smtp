@@ -37,7 +37,7 @@ public class DkimBuilderTest extends MockTest {
     doReturn("b2").when(builder).createB(anyString(), anyString());
     doReturn(10000000L).when(builder).getEpocSecond(any());
     // test method
-    builder.fromHost("fromHost");
+    builder.fromHost("fromHost").selector("selector");
     String result = builder.build();
     // assert
     assertThat(result)
@@ -49,7 +49,7 @@ public class DkimBuilderTest extends MockTest {
                 + "c=relaxed/relaxed; "
                 + "d=fromHost; "
                 + "h=subject:from; "
-                + "s=fromHost; "
+                + "s=selector; "
                 + "t=10000000");
   }
 

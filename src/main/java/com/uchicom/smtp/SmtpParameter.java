@@ -62,6 +62,10 @@ public class SmtpParameter extends Parameter {
     if (is("transfer")) {
       put("transfer", Constants.DEFAULT_TRANSFER);
     }
+    // DKIMセレクター
+    if (is("dkimSelector")) {
+      put("dkimSelector", Constants.DEFAULT_DKIM_SELECTOR);
+    }
     return true;
   }
 
