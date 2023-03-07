@@ -187,7 +187,8 @@ public class SmtpProcess implements ServerProcess {
                       mxHost,
                       address,
                       mail.getData(),
-                      parameter.getFile("dkim"));
+                      parameter.getFile("dkim"),
+                      parameter.get("dkimSelector"));
                   send = true;
                   break;
                 }
@@ -198,7 +199,8 @@ public class SmtpProcess implements ServerProcess {
                       addresses[1],
                       address,
                       mail.getData(),
-                      parameter.getFile("dkim"));
+                      parameter.getFile("dkim"),
+                      parameter.get("dkimSelector"));
                 }
               }
             } else {
