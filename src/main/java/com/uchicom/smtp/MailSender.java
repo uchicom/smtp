@@ -360,7 +360,12 @@ public class MailSender {
    * @throws Exception
    */
   public static void sendMail(
-      String fromHost, String toHost, String toMailAddress, String data, File dkimPrivateKeyFile)
+      String fromHost,
+      String toHost,
+      String toMailAddress,
+      String data,
+      File dkimPrivateKeyFile,
+      String selector)
       throws Exception {
 
     try {
@@ -383,7 +388,7 @@ public class MailSender {
           new MimeMessage(session, new ByteArrayInputStream(data.getBytes(StandardCharsets.UTF_8)));
 
       if (dkimPrivateKeyFile != null) {
-        addDKIMHeader(message, fromHost, dkimPrivateKeyFile);
+        addDKIMHeader(message, fromHost, dkimPrivateKeyFile, selector);
       }
       Transport.send(message, new Address[] {new InternetAddress(toMailAddress)});
 
@@ -392,14 +397,15 @@ public class MailSender {
     }
   }
 
-  static void addDKIMHeader(MimeMessage message, String fromHost, File privateKeyFile)
-      throws Exception {
+  static void addDKIMHeader(
+      MimeMessage message, String fromHost, File privateKeyFile, String selector) throws Exception {
     message.addHeader(
         "DKIM-Signature",
         new DkimBuilder()
             .message(message)
             .fromHost(fromHost)
             .privateKeyFile(privateKeyFile)
+            .selector(selector)
             .build());
   }
 

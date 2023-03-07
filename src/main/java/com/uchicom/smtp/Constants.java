@@ -75,6 +75,8 @@ public class Constants {
   public static String DEFAULT_POOL = "10";
   /** デフォルト送信フラグ */
   public static String DEFAULT_TRANSFER = "false";
+  /** フォルトDKIMセレクター */
+  public static String DEFAULT_DKIM_SELECTOR = "dkim";
 
   /** 迷惑メールパターン */
   public static final Pattern pattern =
