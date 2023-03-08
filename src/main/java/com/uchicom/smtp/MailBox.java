@@ -33,7 +33,7 @@ public class MailBox {
   public MailBox(String mailAddress, File dir) throws IOException {
     this.mailAddress = mailAddress;
     this.dir = dir;
-    File configFile = new File(dir, Constants.WEBHOOK_FILE_NAME);
+    File configFile = new File(dir, Constants.CONFIG_FILE_NAME);
     if (configFile.exists() && configFile.isFile()) {
 
       webhook =
