@@ -485,6 +485,7 @@ public class SmtpProcess implements ServerProcess {
   public static String[] lookupMailHosts(String domainName) throws NamingException {
 
     InitialDirContext idc = new InitialDirContext();
+    @SuppressWarnings("BanJNDI")
     Attributes attributes = idc.getAttributes("dns:/" + domainName, new String[] {"MX"});
     Attribute attributeMX = attributes.get("MX");
 
