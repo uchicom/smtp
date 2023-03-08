@@ -58,12 +58,8 @@ public class SmtpParameter extends Parameter {
       Context context = Context.singleton();
       context.setUsers(get("memory").split(","));
     }
-    // 送信可否
-    if (is("transfer")) {
-      put("transfer", Constants.DEFAULT_TRANSFER);
-    }
     // DKIMセレクター
-    if (is("dkimSelector")) {
+    if (!is("dkimSelector")) {
       put("dkimSelector", Constants.DEFAULT_DKIM_SELECTOR);
     }
     return true;
