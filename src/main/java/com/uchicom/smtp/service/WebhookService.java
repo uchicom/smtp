@@ -148,23 +148,28 @@ public class WebhookService {
     Map<String, String> parameterMap = new HashMap<>();
     parameterMap.put("${subject}", subject);
     parameterMap.put("${content}", content);
-    for (Entry<String, ParameterDto> entry : send.body.parameter.entrySet()) {
-      switch (entry.getValue().target) {
-        case "subject":
-          parameterMap.putAll(match(entry.getKey(), entry.getValue().pattern, subject));
-          break;
-        case "content":
-          parameterMap.putAll(match(entry.getKey(), entry.getValue().pattern, content));
-          break;
+    if (send.body.parameter != null) {
+      for (Entry<String, ParameterDto> entry : send.body.parameter.entrySet()) {
+        switch (entry.getValue().target) {
+          case "subject":
+            parameterMap.putAll(match(entry.getKey(), entry.getValue().pattern, subject));
+            break;
+          case "content":
+            parameterMap.putAll(match(entry.getKey(), entry.getValue().pattern, content));
+            break;
+        }
       }
     }
     String template = send.body.template;
     for (Entry<String, String> entry : parameterMap.entrySet()) {
       template = template.replace(entry.getKey(), entry.getValue());
     }
+
     Builder builder = HttpRequest.newBuilder().uri(URI.create(send.url));
-    for (Entry<String, String> entry : send.header.entrySet()) {
-      builder.header(entry.getKey(), entry.getValue());
+    if (send.header != null) {
+      for (Entry<String, String> entry : send.header.entrySet()) {
+        builder.header(entry.getKey(), entry.getValue());
+      }
     }
 
     HttpRequest request = builder.POST(BodyPublishers.ofString(template)).build();
