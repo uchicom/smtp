@@ -24,14 +24,11 @@ mvn exec:java "-Dexec.mainClass=com.uchicom.smtp.TestMain"
 keytool -genkey -alias smtp -keyalg RSA -keystore keystore -storepass changeit
 ```
 
-## .smtp.yml
+## .webhook.yml
 ```
-account:
-password:
-webhook:
 send:
 	method: post
-	url: https://dokosoko/share/api/webhook/payjp
+	url: https://dokosoko/test/api/webhook/mail
 	header:
 	Content-Type: application/json
 	Webhook-Token: smtp_webhook_0123456789

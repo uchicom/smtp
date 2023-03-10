@@ -7,6 +7,7 @@ import com.uchicom.smtp.dto.SendDto;
 import com.uchicom.smtp.dto.WebhookDto;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -37,7 +38,10 @@ public class WebhookService {
   public void webhook(File file, WebhookDto webhook)
       throws MessagingException, IOException, InterruptedException {
 
-    MimeMessage message = new MimeMessage(null, new FileInputStream(file));
+    if (webhook.detection == null) {
+      return;
+    }
+    MimeMessage message = createMimeMessage(file);
 
     LABEL:
     for (DetectionDto detection : webhook.detection) {
@@ -98,6 +102,13 @@ public class WebhookService {
       }
       send(webhook.send, message.getSubject(), message.getContent().toString());
       return;
+    }
+  }
+
+  MimeMessage createMimeMessage(File file)
+      throws MessagingException, FileNotFoundException, IOException {
+    try (var fis = new FileInputStream(file)) {
+      return new MimeMessage(null, fis);
     }
   }
 

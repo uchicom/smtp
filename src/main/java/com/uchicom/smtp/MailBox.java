@@ -1,7 +1,6 @@
 // (C) 2015 uchicom
 package com.uchicom.smtp;
 
-import com.uchicom.smtp.dto.ConfigDto;
 import com.uchicom.smtp.dto.WebhookDto;
 import com.uchicom.smtp.service.WebhookService;
 import java.io.File;
@@ -25,28 +24,14 @@ public class MailBox {
   private File dir;
   /** メールリスト */
   private List<Mail> mailList;
-  /** 設定 */
+  /** Webhook設定 */
   private WebhookDto webhook;
 
   private final WebhookService webhookService = new WebhookService();
 
-  public MailBox(String mailAddress, File dir) throws IOException {
+  MailBox(String mailAddress, File dir) {
     this.mailAddress = mailAddress;
     this.dir = dir;
-    File configFile = new File(dir, Constants.CONFIG_FILE_NAME);
-    if (configFile.exists() && configFile.isFile()) {
-
-      webhook =
-          new Yaml()
-              .loadAs(
-                  new String(Files.readAllBytes(configFile.toPath()), StandardCharsets.UTF_8),
-                  ConfigDto.class)
-              .webhook;
-    }
-
-    if (!dir.exists()) {
-      dir.mkdirs();
-    }
   }
 
   public MailBox(String mailAddress, List<Mail> mailList) {
@@ -79,5 +64,59 @@ public class MailBox {
 
   public void webhook(File file) throws MessagingException, IOException, InterruptedException {
     webhookService.webhook(file, webhook);
+  }
+
+  public static Builder builder() {
+    return new Builder();
+  }
+
+  public static class Builder {
+
+    /** メールアドレス */
+    String mailAddress;
+    /** ディレクトリ */
+    File dir;
+
+    boolean webhook;
+
+    public Builder() {}
+
+    public Builder mailAddress(String mailAddress) {
+      this.mailAddress = mailAddress;
+      return this;
+    }
+
+    public Builder dir(File dir) {
+      this.dir = dir;
+      return this;
+    }
+
+    public Builder webhook(boolean webhook) {
+      this.webhook = webhook;
+      return this;
+    }
+
+    public MailBox build() throws IOException {
+      var mailBox = new MailBox(mailAddress, dir);
+      if (dir.exists()) {
+        if (webhook) {
+          mailBox.webhook = getWebhook(dir);
+        }
+      } else {
+        dir.mkdirs();
+      }
+      return mailBox;
+    }
+
+    WebhookDto getWebhook(File dir) throws IOException {
+      var webhookFile = new File(dir, Constants.WEBHOOK_FILE_NAME);
+      if (!webhookFile.exists() || !webhookFile.isFile()) {
+        return null;
+      }
+      return new Yaml()
+          .loadAs(
+              new String(Files.readAllBytes(webhookFile.toPath()), StandardCharsets.UTF_8),
+              WebhookDto.class);
+    }
   }
 }
