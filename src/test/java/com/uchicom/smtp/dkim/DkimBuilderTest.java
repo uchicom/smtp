@@ -12,6 +12,8 @@ import com.uchicom.smtp.MockTest;
 import java.io.ByteArrayInputStream;
 import java.security.PrivateKey;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import javax.mail.Address;
 import javax.mail.Message;
 import javax.mail.Session;
@@ -116,10 +118,12 @@ public class DkimBuilderTest extends MockTest {
   public void getEpocSecond() {
 
     // mock
-    LocalDateTime now = LocalDateTime.of(2022, 3, 7, 6, 39, 0);
+    OffsetDateTime now = OffsetDateTime.of(2022, 3, 7, 6, 39, 0, 0, ZoneOffset.ofHours(9)); // japan
     // test method
     long result = builder.getEpocSecond(now);
+    LocalDateTime resultDateTime = LocalDateTime.ofEpochSecond(result, 0, ZoneOffset.UTC);
     // assert
-    assertThat(result).isEqualTo(1646635140L);
+
+    assertThat(resultDateTime.plusHours(9)).isEqualTo(now.toLocalDateTime());
   }
 }

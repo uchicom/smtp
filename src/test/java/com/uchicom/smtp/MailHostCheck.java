@@ -3,10 +3,14 @@ package com.uchicom.smtp;
 
 import javax.naming.NamingException;
 
-/** @author uchicom: Shigeki Uchiyama */
+/**
+ * @author uchicom: Shigeki Uchiyama
+ */
 public class MailHostCheck {
 
-  /** @param args */
+  /**
+   * @param args
+   */
   public static void main(String[] args) {
     if (args.length > 0) {
       try {
