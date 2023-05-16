@@ -41,7 +41,7 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <spotless.version>2.27.2</spotless.version>
-    <java.version>1.8</java.version>
+    <java.version>20</java.version>
     <maven.compiler.target>${java.version}</maven.compiler.target>
     <maven.compiler.source>${java.version}</maven.compiler.source>
   </properties>
@@ -167,7 +167,7 @@
             <importOrder></importOrder>
             <removeUnusedImports></removeUnusedImports>
             <googleJavaFormat>
-              <version>1.7</version>
+              <version>1.16.0</version>
               <style>GOOGLE</style>
             </googleJavaFormat>
             <licenseHeader>
