@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.uchicom</groupId>
   <artifactId>smtp</artifactId>
-  <version>0.1.17</version>
+  <version>0.1.18</version>
   <packaging>jar</packaging>
   <name>smtp</name>
   <description>smtp server</description>
@@ -40,8 +40,8 @@
   </distributionManagement>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <spotless.version>2.27.2</spotless.version>
-    <java.version>1.8</java.version>
+    <spotless.version>2.36.0</spotless.version>
+    <java.version>20</java.version>
     <maven.compiler.target>${java.version}</maven.compiler.target>
     <maven.compiler.source>${java.version}</maven.compiler.source>
   </properties>
@@ -113,12 +113,12 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-release-plugin</artifactId>
-        <version>3.0.0-M6</version>
+        <version>3.0.0</version>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-assembly-plugin</artifactId>
-        <version>3.3.0</version>
+        <version>3.6.0</version>
         <configuration>
           <descriptorRefs>
             <descriptorRef>jar-with-dependencies</descriptorRef>
@@ -167,7 +167,7 @@
             <importOrder></importOrder>
             <removeUnusedImports></removeUnusedImports>
             <googleJavaFormat>
-              <version>1.7</version>
+              <version>1.16.0</version>
               <style>GOOGLE</style>
             </googleJavaFormat>
             <licenseHeader>
@@ -269,7 +269,7 @@
           <plugin>
             <groupId>org.sonatype.plugins</groupId>
             <artifactId>nexus-staging-maven-plugin</artifactId>
-            <version>1.6.8</version>
+            <version>1.6.13</version>
             <extensions>true</extensions>
             <configuration>
               <serverId>ossrh</serverId>
@@ -293,7 +293,7 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-javadoc-plugin</artifactId>
-            <version>3.3.1</version>
+            <version>3.5.0</version>
             <configuration>
               <additionalOptions>-html5</additionalOptions>
             </configuration>
