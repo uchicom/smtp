@@ -175,7 +175,8 @@ public class WebhookService {
     HttpRequest request = builder.POST(BodyPublishers.ofString(template)).build();
     HttpClient client = HttpClient.newHttpClient();
     var response = client.send(request, BodyHandlers.ofString());
-    logger.info("webhook.status:" + response.statusCode());
+    logger.info("webhook.response.status:" + response.statusCode());
+    logger.info("webhook.response.body:" + response.body());
   }
 
   public Map<String, String> match(String key, String pattern, String target) {
