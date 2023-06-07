@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.util.List;
+import javax.mail.MessagingException;
 
 /**
  * ファイル形式のメールクラス.
@@ -58,8 +59,14 @@ public class FileMail implements Mail {
             mailBox.getMailAddress(),
             senderHostName,
             localHostName);
+        if (mailBox.hasWebhook()) {
+          mailBox.webhook(file);
+        }
+      } catch (MessagingException e) {
+        e.printStackTrace();
       } catch (IOException e) {
-        // TODO 自動生成された catch ブロック
+        e.printStackTrace();
+      } catch (InterruptedException e) {
         e.printStackTrace();
       }
     }

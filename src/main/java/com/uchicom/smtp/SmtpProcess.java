@@ -303,7 +303,12 @@ public class SmtpProcess implements ServerProcess {
                   if (box.isDirectory()) {
                     if (addresses[0].equals(box.getName())) {
                       if (mailFromCheck(box)) {
-                        boxList.add(new MailBox(address, box));
+                        boxList.add(
+                            MailBox.builder()
+                                .mailAddress(address)
+                                .dir(box)
+                                .webhook(parameter.is("webhook"))
+                                .build());
                       }
                       break;
                     }
@@ -485,6 +490,7 @@ public class SmtpProcess implements ServerProcess {
   public static String[] lookupMailHosts(String domainName) throws NamingException {
 
     InitialDirContext idc = new InitialDirContext();
+    @SuppressWarnings("BanJNDI")
     Attributes attributes = idc.getAttributes("dns:/" + domainName, new String[] {"MX"});
     Attribute attributeMX = attributes.get("MX");
 
