@@ -13,8 +13,7 @@ import java.security.PrivateKey;
 import java.security.Signature;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
+import java.time.OffsetDateTime;
 import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
@@ -75,7 +74,7 @@ public class DkimBuilder {
         .append(selector)
         .append("; ")
         .append("t=") // 秒数
-        .append(getEpocSecond(LocalDateTime.now()));
+        .append(getEpocSecond(OffsetDateTime.now()));
     String dkim = builder.toString();
     String b = createB(normalizeHeader(), "dkim-signature:" + dkim);
     return dkim.replace("b=;", "b=" + b + ";");
@@ -156,7 +155,7 @@ public class DkimBuilder {
     return signer.sign();
   }
 
-  long getEpocSecond(LocalDateTime localDateTime) {
-    return localDateTime.toEpochSecond(ZoneOffset.UTC);
+  long getEpocSecond(OffsetDateTime offsetDateTime) {
+    return offsetDateTime.toEpochSecond();
   }
 }

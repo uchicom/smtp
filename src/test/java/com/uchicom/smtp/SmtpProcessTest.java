@@ -6,7 +6,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.Properties;
 import org.junit.jupiter.api.Test;
 
-/** @author uchicom: Shigeki Uchiyama */
+/**
+ * @author uchicom: Shigeki Uchiyama
+ */
 public class SmtpProcessTest {
 
   @Test

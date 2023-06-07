@@ -585,8 +585,13 @@ public class SmtpProcess implements ServerProcess {
   }
 
   SSLSocket startTls()
-      throws KeyStoreException, NoSuchAlgorithmException, CertificateException,
-          FileNotFoundException, IOException, UnrecoverableKeyException, KeyManagementException {
+      throws KeyStoreException,
+          NoSuchAlgorithmException,
+          CertificateException,
+          FileNotFoundException,
+          IOException,
+          UnrecoverableKeyException,
+          KeyManagementException {
     String password = parameter.get("keyStorePass");
     KeyStore ks = KeyStore.getInstance("JKS");
     ks.load(new FileInputStream(parameter.get("keyStoreName")), password.toCharArray());
