@@ -1,0 +1,12 @@
+send:
+  method: post
+  url: https://dokosoko/test/api/webhook/mail
+  header:
+    Content-Type: application/json
+    Webhook-Token: smtp_webhook_0123456789
+  template: "{title:\"${subject}\", content:\"${content:1}\"}"
+detection: 
+  - subject: and 条件
+    content:
+    from: dokosoko@test
+    to: to@test
