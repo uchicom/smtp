@@ -15,6 +15,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpRequest.Builder;
 import java.net.http.HttpResponse.BodyHandlers;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -24,6 +25,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import javax.mail.Address;
 import javax.mail.BodyPart;
+import javax.mail.Header;
 import javax.mail.Message.RecipientType;
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
@@ -91,7 +93,12 @@ public class WebhookService {
         MimeMultipart mimeMultipart = getMultipart(message.getContent());
         if (mimeMultipart == null) continue;
         // マルチパート検出送信したかチェック
-        if (multipart(mimeMultipart, detection, message.getSubject(), webhook.send)) {
+        if (multipart(
+            mimeMultipart,
+            detection,
+            message.getAllHeaders(),
+            message.getSubject(),
+            webhook.send)) {
           return;
         }
         continue;
@@ -100,7 +107,11 @@ public class WebhookService {
         if (isMultipart(message.getContent())) continue;
         if (!message.getContent().toString().contains(detection.content)) continue;
       }
-      send(webhook.send, message.getSubject(), message.getContent().toString());
+      send(
+          webhook.send,
+          message.getAllHeaders(),
+          message.getSubject(),
+          message.getContent().toString());
       return;
     }
   }
@@ -121,12 +132,17 @@ public class WebhookService {
   }
 
   boolean multipart(
-      MimeMultipart mimeMultipart, DetectionDto detection, String subject, SendDto send)
+      MimeMultipart mimeMultipart,
+      DetectionDto detection,
+      Enumeration<Header> headers,
+      String subject,
+      SendDto send)
       throws IOException, MessagingException, InterruptedException {
     for (int i = 0; i < mimeMultipart.getCount(); i++) {
       BodyPart body = mimeMultipart.getBodyPart(i);
       MimeMultipart bodyMimeMultipart = getMultipart(body.getContent());
-      if (bodyMimeMultipart != null && multipart(bodyMimeMultipart, detection, subject, send)) {
+      if (bodyMimeMultipart != null
+          && multipart(bodyMimeMultipart, detection, headers, subject, send)) {
         return true;
       }
       if (detection.multipart.contentType != null
@@ -137,15 +153,20 @@ public class WebhookService {
           && !body.getContent().toString().contains(detection.multipart.body)) {
         continue;
       }
-      send(send, subject, body.getContent().toString());
+      send(send, headers, subject, body.getContent().toString());
       return true;
     }
     return false;
   }
 
-  void send(SendDto send, String subject, String content) throws IOException, InterruptedException {
+  void send(SendDto send, Enumeration<Header> headers, String subject, String content)
+      throws IOException, InterruptedException {
     if (send == null) return;
     Map<String, String> parameterMap = new HashMap<>();
+    headers
+        .asIterator()
+        .forEachRemaining(
+            header -> parameterMap.put("${" + header.getName() + "}", header.getValue()));
     parameterMap.put("${subject}", subject);
     parameterMap.put("${content}", content);
     if (send.body.parameter != null) {
@@ -157,8 +178,18 @@ public class WebhookService {
           case "content":
             parameterMap.putAll(match(entry.getKey(), entry.getValue().pattern, content));
             break;
+          default:
+            headers
+                .asIterator()
+                .forEachRemaining(
+                    header -> {
+                      if (!entry.getKey().equals(header.getName())) return;
+                      parameterMap.putAll(
+                          match(entry.getKey(), entry.getValue().pattern, header.getValue()));
+                    });
         }
       }
+      logger.info(parameterMap.toString());
     }
     String template = send.body.template;
     for (Entry<String, String> entry : parameterMap.entrySet()) {
