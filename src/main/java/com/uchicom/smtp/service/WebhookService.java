@@ -15,8 +15,10 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpRequest.Builder;
 import java.net.http.HttpResponse.BodyHandlers;
+import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.logging.Logger;
@@ -163,10 +165,14 @@ public class WebhookService {
       throws IOException, InterruptedException {
     if (send == null) return;
     Map<String, String> parameterMap = new HashMap<>();
+    List<Header> headerList = new ArrayList<>();
     headers
         .asIterator()
         .forEachRemaining(
-            header -> parameterMap.put("${" + header.getName() + "}", header.getValue()));
+            header -> {
+              parameterMap.put("${" + header.getName() + "}", header.getValue());
+              headerList.add(header);
+            });
     parameterMap.put("${subject}", subject);
     parameterMap.put("${content}", content);
     if (send.body.parameter != null) {
@@ -179,14 +185,12 @@ public class WebhookService {
             parameterMap.putAll(match(entry.getKey(), entry.getValue().pattern, content));
             break;
           default:
-            headers
-                .asIterator()
-                .forEachRemaining(
-                    header -> {
-                      if (!entry.getKey().equals(header.getName())) return;
-                      parameterMap.putAll(
-                          match(entry.getKey(), entry.getValue().pattern, header.getValue()));
-                    });
+            headerList.forEach(
+                header -> {
+                  if (!entry.getValue().target.equals(header.getName())) return;
+                  parameterMap.putAll(
+                      match(entry.getKey(), entry.getValue().pattern, header.getValue()));
+                });
         }
       }
       logger.info(parameterMap.toString());
