@@ -13,6 +13,8 @@ import com.uchicom.smtp.dto.SendDto;
 import com.uchicom.smtp.dto.WebhookDto;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Enumeration;
+import javax.mail.Header;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 import org.junit.jupiter.api.Test;
@@ -21,6 +23,7 @@ import org.mockito.Captor;
 
 public class WebhooServiceTest extends MockTest {
 
+  @Captor ArgumentCaptor<Enumeration<Header>> headersCaptor;
   @Captor ArgumentCaptor<String> subjectCaptor;
   @Captor ArgumentCaptor<String> contentCaptor;
   @Captor ArgumentCaptor<SendDto> sendCaptor;
@@ -30,7 +33,11 @@ public class WebhooServiceTest extends MockTest {
     var service = spy(new WebhookService());
     doNothing()
         .when(service)
-        .send(sendCaptor.capture(), subjectCaptor.capture(), contentCaptor.capture());
+        .send(
+            sendCaptor.capture(),
+            headersCaptor.capture(),
+            subjectCaptor.capture(),
+            contentCaptor.capture());
     var file = mock(File.class);
     var mimeMessage = mock(MimeMessage.class);
     doReturn(mimeMessage).when(service).createMimeMessage(file);
@@ -49,7 +56,11 @@ public class WebhooServiceTest extends MockTest {
     var service = spy(new WebhookService());
     doNothing()
         .when(service)
-        .send(sendCaptor.capture(), subjectCaptor.capture(), contentCaptor.capture());
+        .send(
+            sendCaptor.capture(),
+            headersCaptor.capture(),
+            subjectCaptor.capture(),
+            contentCaptor.capture());
     var file = mock(File.class);
     var mimeMessage = mock(MimeMessage.class);
     doReturn(mimeMessage).when(service).createMimeMessage(file);
@@ -71,7 +82,11 @@ public class WebhooServiceTest extends MockTest {
     var service = spy(new WebhookService());
     doNothing()
         .when(service)
-        .send(sendCaptor.capture(), subjectCaptor.capture(), contentCaptor.capture());
+        .send(
+            sendCaptor.capture(),
+            headersCaptor.capture(),
+            subjectCaptor.capture(),
+            contentCaptor.capture());
     var file = mock(File.class);
     var mimeMessage = mock(MimeMessage.class);
     doReturn(mimeMessage).when(service).createMimeMessage(file);
@@ -94,7 +109,11 @@ public class WebhooServiceTest extends MockTest {
     var service = spy(new WebhookService());
     doNothing()
         .when(service)
-        .send(sendCaptor.capture(), subjectCaptor.capture(), contentCaptor.capture());
+        .send(
+            sendCaptor.capture(),
+            headersCaptor.capture(),
+            subjectCaptor.capture(),
+            contentCaptor.capture());
     var file = mock(File.class);
     var mimeMessage = mock(MimeMessage.class);
     doReturn(mimeMessage).when(service).createMimeMessage(file);
@@ -117,7 +136,11 @@ public class WebhooServiceTest extends MockTest {
     var service = spy(new WebhookService());
     doNothing()
         .when(service)
-        .send(sendCaptor.capture(), subjectCaptor.capture(), contentCaptor.capture());
+        .send(
+            sendCaptor.capture(),
+            headersCaptor.capture(),
+            subjectCaptor.capture(),
+            contentCaptor.capture());
     var file = mock(File.class);
     var mimeMessage = mock(MimeMessage.class);
     doReturn(mimeMessage).when(service).createMimeMessage(file);
@@ -140,7 +163,11 @@ public class WebhooServiceTest extends MockTest {
     var service = spy(new WebhookService());
     doNothing()
         .when(service)
-        .send(sendCaptor.capture(), subjectCaptor.capture(), contentCaptor.capture());
+        .send(
+            sendCaptor.capture(),
+            headersCaptor.capture(),
+            subjectCaptor.capture(),
+            contentCaptor.capture());
     var file = mock(File.class);
     var mimeMessage = mock(MimeMessage.class);
     doReturn(mimeMessage).when(service).createMimeMessage(file);
