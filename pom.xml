@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.uchicom</groupId>
   <artifactId>smtp</artifactId>
-  <version>0.1.22</version>
+  <version>0.1.23</version>
   <packaging>jar</packaging>
   <name>smtp</name>
   <description>smtp server</description>
