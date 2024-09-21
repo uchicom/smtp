@@ -19,6 +19,7 @@ import java.time.format.DateTimeFormatter;
 public class SmtpUtil {
 
   private static DateTimeFormatter dateTimeFormatter = DateTimeFormatter.RFC_1123_DATE_TIME;
+
   /**
    * コマンドがEHLOかどうかをチェックする.
    *

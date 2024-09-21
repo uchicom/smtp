@@ -59,6 +59,7 @@ public class SmtpProcess implements ServerProcess {
   private boolean bRcptTo;
   private boolean bData;
   private boolean bAuth;
+
   /** 外のメールサーバに転送する */
   private boolean bTransfer;
 
@@ -260,7 +261,7 @@ public class SmtpProcess implements ServerProcess {
             }
           }
           init();
-        } else if (SmtpUtil.isStartTls(line)) {
+        } else if (SmtpUtil.isStartTls(line) || hasKeyStore()) {
           SmtpUtil.recieveLine(ps, Constants.RECV_220, " Go ahead");
           socket = startTls();
           br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -356,7 +357,7 @@ public class SmtpProcess implements ServerProcess {
                               + "_"
                               + LocalDateTime.now().format(dateTimeFormatter) // 日付とuuid スレッド番号
                               + "_"
-                              + Thread.currentThread().getId()
+                              + Thread.currentThread().threadId()
                               + ".eml"));
             }
             writer = mail.getWriter();

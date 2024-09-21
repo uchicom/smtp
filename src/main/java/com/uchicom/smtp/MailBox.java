@@ -20,10 +20,13 @@ public class MailBox {
 
   /** メールアドレス */
   private String mailAddress;
+
   /** ディレクトリ */
   private File dir;
+
   /** メールリスト */
   private List<Mail> mailList;
+
   /** Webhook設定 */
   private WebhookDto webhook;
 
@@ -74,6 +77,7 @@ public class MailBox {
 
     /** メールアドレス */
     String mailAddress;
+
     /** ディレクトリ */
     File dir;
 
