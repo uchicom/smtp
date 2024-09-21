@@ -27,7 +27,7 @@ public class SmtpUtil {
    * @return コマンドがEHLOの場合はtrue,それ以外はfalse
    */
   public static boolean isEhlo(String cmd) {
-    return cmd.matches(Constants.REG_EXP_EHLO);
+    return Constants.REG_EXP_EHLO.matcher(cmd).matches();
   }
 
   /**
@@ -37,7 +37,7 @@ public class SmtpUtil {
    * @return コマンドがSTARTTLSの場合はtrue,それ以外はfalse
    */
   public static boolean isStartTls(String cmd) {
-    return cmd.matches(Constants.REG_EXP_START_TLS);
+    return Constants.REG_EXP_START_TLS.matcher(cmd).matches();
   }
 
   /**
@@ -47,7 +47,7 @@ public class SmtpUtil {
    * @return コマンドがHELOの場合はtrue,それ以外はfalse
    */
   public static boolean isHelo(String cmd) {
-    return cmd.matches(Constants.REG_EXP_HELO);
+    return Constants.REG_EXP_HELO.matcher(cmd).matches();
   }
 
   /**
@@ -57,7 +57,7 @@ public class SmtpUtil {
    * @return コマンドがRSETの場合はtrue,それ以外はfalse
    */
   public static boolean isRset(String cmd) {
-    return cmd.matches(Constants.REG_EXP_RSET);
+    return Constants.REG_EXP_RSET.matcher(cmd).matches();
   }
 
   /**
@@ -67,7 +67,7 @@ public class SmtpUtil {
    * @return コマンドがMAIL_FROMの場合はtrue,それ以外はfalse
    */
   public static boolean isMailFrom(String cmd) {
-    return cmd.matches(Constants.REG_EXP_MAIL_FROM);
+    return Constants.REG_EXP_MAIL_FROM.matcher(cmd).matches();
   }
 
   /**
@@ -77,7 +77,7 @@ public class SmtpUtil {
    * @return コマンドがRCPT_TOの場合はtrue,それ以外はfalse
    */
   public static boolean isRcptTo(String cmd) {
-    return cmd.matches(Constants.REG_EXP_RCPT_TO);
+    return Constants.REG_EXP_RCPT_TO.matcher(cmd).matches();
   }
 
   /**
@@ -87,7 +87,7 @@ public class SmtpUtil {
    * @return コマンドがDATAの場合はtrue,それ以外はfalse
    */
   public static boolean isData(String cmd) {
-    return cmd.matches(Constants.REG_EXP_DATA);
+    return Constants.REG_EXP_DATA.matcher(cmd).matches();
   }
 
   /**
@@ -97,7 +97,7 @@ public class SmtpUtil {
    * @return コマンドがQUITの場合はtrue,それ以外はfalse
    */
   public static boolean isQuit(String cmd) {
-    return cmd.matches(Constants.REG_EXP_QUIT);
+    return Constants.REG_EXP_QUIT.matcher(cmd).matches();
   }
 
   /**
@@ -107,7 +107,7 @@ public class SmtpUtil {
    * @return コマンドがNOOPの場合はtrue,それ以外はfalse
    */
   public static boolean isNoop(String cmd) {
-    return cmd.matches(Constants.REG_EXP_NOOP);
+    return Constants.REG_EXP_NOOP.matcher(cmd).matches();
   }
 
   /**
@@ -117,7 +117,7 @@ public class SmtpUtil {
    * @return コマンドがVRFYの場合はtrue,それ以外はfalse
    */
   public static boolean isVrfy(String cmd) {
-    return cmd.matches(Constants.REG_EXP_VRFY);
+    return Constants.REG_EXP_VRFY.matcher(cmd).matches();
   }
 
   /**
@@ -127,7 +127,7 @@ public class SmtpUtil {
    * @return コマンドがEXPNの場合はtrue,それ以外はfalse
    */
   public static boolean isExpn(String cmd) {
-    return cmd.matches(Constants.REG_EXP_EXPN);
+    return Constants.REG_EXP_EXPN.matcher(cmd).matches();
   }
 
   /**
@@ -137,11 +137,11 @@ public class SmtpUtil {
    * @return コマンドがHELPの場合はtrue,それ以外はfalse
    */
   public static boolean isHelp(String cmd) {
-    return cmd.matches(Constants.REG_EXP_HELP);
+    return Constants.REG_EXP_HELP.matcher(cmd).matches();
   }
 
   public static boolean isAuthLogin(String cmd) {
-    return cmd.matches(Constants.REG_EXP_AUTH_LOGIN);
+    return Constants.REG_EXP_AUTH_LOGIN.matcher(cmd).matches();
   }
 
   /**
