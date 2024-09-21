@@ -261,11 +261,15 @@ public class SmtpProcess implements ServerProcess {
             }
           }
           init();
-        } else if (SmtpUtil.isStartTls(line) || hasKeyStore()) {
-          SmtpUtil.recieveLine(ps, Constants.RECV_220, " Go ahead");
-          socket = startTls();
-          br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-          ps = new PrintStream(socket.getOutputStream());
+        } else if (SmtpUtil.isStartTls(line)) {
+          if (hasKeyStore()) {
+            SmtpUtil.recieveLine(ps, Constants.RECV_220, " Go ahead");
+            socket = startTls();
+            br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            ps = new PrintStream(socket.getOutputStream());
+          } else {
+            SmtpUtil.recieveLine(ps, "502", " Command not implemented");
+          }
         } else if (SmtpUtil.isAuthLogin(line) && parameter.is("transfer")) {
           authStatus = AuthenticationStatus.USER;
           SmtpUtil.recieveLine(ps, Constants.RECV_334, " VXNlcm5hbWU6");
