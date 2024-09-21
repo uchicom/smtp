@@ -48,43 +48,46 @@ public class Constants {
 
   // SMTPコマンド正規表現
   /** EHLOの正規表現(大文字小文字後続スペース) */
-  public static String REG_EXP_EHLO = "^ *[Ee][Hh][Ll][Oo] +[^ ]+ *$";
+  public static Pattern REG_EXP_EHLO = Pattern.compile("^ *[Ee][Hh][Ll][Oo] +[^ ]+ *$");
 
   /** STARTTLSの正規表現(大文字小文字後続スペース) */
-  public static String REG_EXP_START_TLS = "^ *[Ss][Tt][Aa][Rr][Tt][Tt][Ll][Ss] *$";
+  public static Pattern REG_EXP_START_TLS =
+      Pattern.compile("^ *[Ss][Tt][Aa][Rr][Tt][Tt][Ll][Ss] *$");
 
   /** HELOの正規表現(大文字小文字後続スペース) */
-  public static String REG_EXP_HELO = "^ *[Hh][Ee][Ll][Oo] +[^ ]+ *$";
+  public static Pattern REG_EXP_HELO = Pattern.compile("^ *[Hh][Ee][Ll][Oo] +[^ ]+ *$");
 
   /** MAIL FROM:アドレスの正規表現(大文字小文字後続スペース) */
-  public static String REG_EXP_MAIL_FROM = "^[Mm][Aa][Ii][Ll] [Ff][Rr][Oo][Mm]:.+@.+ *$";
+  public static Pattern REG_EXP_MAIL_FROM =
+      Pattern.compile("^[Mm][Aa][Ii][Ll] [Ff][Rr][Oo][Mm]:.+@.+ *$");
 
   /** RCPT TO:アドレスの正規表現(大文字小文字後続スペース) */
-  public static String REG_EXP_RCPT_TO = "^[Rr][Cc][Pp][Tt] [Tt][Oo]:.+@.+ *$";
+  public static Pattern REG_EXP_RCPT_TO = Pattern.compile("^[Rr][Cc][Pp][Tt] [Tt][Oo]:.+@.+ *$");
 
   /** DATAの正規表現(大文字小文字後続スペース) */
-  public static String REG_EXP_DATA = "^[Dd][Aa][Tt][Aa] *$";
+  public static Pattern REG_EXP_DATA = Pattern.compile("^[Dd][Aa][Tt][Aa] *$");
 
   /** QUITの正規表現(大文字小文字後続スペース) */
-  public static String REG_EXP_QUIT = "^[Qq][Uu][Ii][Tt] *$";
+  public static Pattern REG_EXP_QUIT = Pattern.compile("^[Qq][Uu][Ii][Tt] *$");
 
   /** RSETの正規表現(大文字小文字後続スペース) */
-  public static String REG_EXP_RSET = "^[Rr][Ss][Ee][Tt] *$";
+  public static Pattern REG_EXP_RSET = Pattern.compile("^[Rr][Ss][Ee][Tt] *$");
 
   /** NOOPの正規表現(大文字小文字後続スペース) */
-  public static String REG_EXP_NOOP = "^[Nn][Oo][Oo][Pp] *$";
+  public static Pattern REG_EXP_NOOP = Pattern.compile("^[Nn][Oo][Oo][Pp] *$");
 
   /** VRFYの正規表現(大文字小文字後続スペース) */
-  public static String REG_EXP_VRFY = "^[Vv][Rr][Ff][Yy] +[^ ]+ *$";
+  public static Pattern REG_EXP_VRFY = Pattern.compile("^[Vv][Rr][Ff][Yy] +[^ ]+ *$");
 
   /** EXPNの正規表現(大文字小文字後続スペース) */
-  public static String REG_EXP_EXPN = "^[Ee][Xx][Pp][Nn] +[^ ]+ *$";
+  public static Pattern REG_EXP_EXPN = Pattern.compile("^[Ee][Xx][Pp][Nn] +[^ ]+ *$");
 
   /** HELPの正規表現(大文字小文字後続スペース) */
-  public static String REG_EXP_HELP = "^[Hh][Ee][Ll][Pp] *$";
+  public static Pattern REG_EXP_HELP = Pattern.compile("^[Hh][Ee][Ll][Pp] *$");
 
   /** AUTH PLAINの正規表現(大文字小文字後続スペース) */
-  public static String REG_EXP_AUTH_LOGIN = "^[Aa][Uu][Tt][Hh] +[Ll][Oo][Gg][Ii][Nn] *$";
+  public static Pattern REG_EXP_AUTH_LOGIN =
+      Pattern.compile("^[Aa][Uu][Tt][Hh] +[Ll][Oo][Gg][Ii][Nn] *$");
 
   // 初期設定
   /** デフォルトメールボックスディレクトリ */
