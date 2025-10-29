@@ -5,7 +5,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
-import java.util.List;
+import java.util.Set;
 
 /**
  * メモリ形式のメールクラス.
@@ -29,8 +29,8 @@ public class MemoryMail implements Mail {
   public void delete() {}
 
   @Override
-  public void copy(List<MailBox> boxList, String senderHostName, String localHostName) {
-    for (MailBox mailBox : boxList) {
+  public void copy(Set<MailBox> boxSet, String senderHostName, String localHostName) {
+    for (MailBox mailBox : boxSet) {
       synchronized (mailBox.getMailList()) {
         MemoryMail mail = new MemoryMail(mailBox.getMailAddress(), senderHostName, localHostName);
         try {
