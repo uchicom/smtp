@@ -27,8 +27,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
@@ -72,7 +74,7 @@ public class SmtpProcess implements ServerProcess {
   private Mail mail;
   private String authName;
 
-  private List<MailBox> boxList = new ArrayList<>();
+  private Set<MailBox> boxSet = new HashSet<>();
 
   /** 転送アドレス一覧 */
   private List<String> transferList = new ArrayList<>();
@@ -161,13 +163,13 @@ public class SmtpProcess implements ServerProcess {
             if (bSpam) {
               // 迷惑メールフォルダに移動
               try {
-                boxList.stream()
+                boxSet.stream()
                     .forEach(
                         (mailBox) -> {
                           mailBox.setDir(new File(parameter.getFile("dir"), Constants.SPAM_DIR));
                         });
                 mail.copy(
-                    boxList,
+                    boxSet,
                     socket.getLocalAddress().getHostName(),
                     socket.getInetAddress().getHostName());
               } catch (Exception e) {
@@ -208,7 +210,7 @@ public class SmtpProcess implements ServerProcess {
               // メッセージコピー処理
               try {
                 mail.copy(
-                    boxList,
+                    boxSet,
                     socket.getLocalAddress().getHostName(),
                     socket.getInetAddress().getHostName());
               } catch (Exception e) {
@@ -298,7 +300,7 @@ public class SmtpProcess implements ServerProcess {
               if (parameter.is("memory")) {
                 for (String user : Context.singleton().getUsers()) {
                   if (addresses[0].equals(user)) {
-                    boxList.add(new MailBox(address, Context.singleton().getMailList(user)));
+                    boxSet.add(new MailBox(address, Context.singleton().getMailList(user)));
                     break;
                   }
                 }
@@ -308,7 +310,7 @@ public class SmtpProcess implements ServerProcess {
                   if (box.isDirectory()) {
                     if (addresses[0].equals(box.getName())) {
                       if (mailFromCheck(box)) {
-                        boxList.add(
+                        boxSet.add(
                             MailBox.builder()
                                 .mailAddress(address)
                                 .dir(box)
@@ -320,7 +322,7 @@ public class SmtpProcess implements ServerProcess {
                   }
                 }
               }
-              if (boxList.size() > 0) {
+              if (boxSet.size() > 0) {
                 SmtpUtil.recieveLine(ps, Constants.RECV_250_OK);
                 bRcptTo = true;
               } else {
@@ -407,7 +409,7 @@ public class SmtpProcess implements ServerProcess {
         // メッセージコピー処理
         try {
           mail.copy(
-              boxList,
+              boxSet,
               socket.getInetAddress().getHostName(),
               InetAddress.getLocalHost().getHostName());
           mail.delete();
@@ -442,7 +444,7 @@ public class SmtpProcess implements ServerProcess {
     bMailFrom = false;
     bRcptTo = false;
     bData = false;
-    boxList.clear();
+    boxSet.clear();
   }
 
   public long getStartTime() {

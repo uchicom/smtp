@@ -11,9 +11,9 @@ smtp server
 ```
 mvn exec:java "-Dexec.mainClass=com.uchicom.smtp.Main"
 
-mvn exec:java "-Dexec.mainClass=com.uchicom.smtp.Main" -Dexec.args="-port 8025"
+mvn exec:java "-Dexec.mainClass=com.uchicom.smtp.Main" "-Dexec.args=-port 8025"
 
-mvn exec:java "-Dexec.mainClass=com.uchicom.smtp.Main" -Dexec.args="-port 8025 -keyStoreName keystore -keyStorePass changeit"
+mvn exec:java "-Dexec.mainClass=com.uchicom.smtp.Main" "-Dexec.args=-port 8025 -keyStoreName keystore -keyStorePass changeit"
 ```
 ```
 mvn exec:java "-Dexec.mainClass=com.uchicom.smtp.TestMain"
