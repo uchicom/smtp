@@ -7,7 +7,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
-import java.util.List;
+import java.util.Set;
 import javax.mail.MessagingException;
 
 /**
@@ -50,8 +50,8 @@ public class FileMail implements Mail {
   }
 
   @Override
-  public void copy(List<MailBox> boxList, String localHostName, String senderHostName) {
-    for (MailBox mailBox : boxList) {
+  public void copy(Set<MailBox> boxSet, String localHostName, String senderHostName) {
+    for (MailBox mailBox : boxSet) {
       try {
         SmtpUtil.copyFile(
             file,

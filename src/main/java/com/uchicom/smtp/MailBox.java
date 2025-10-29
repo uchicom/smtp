@@ -69,6 +69,35 @@ public class MailBox {
     webhookService.webhook(file, webhook);
   }
 
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result = prime * result + ((mailAddress == null) ? 0 : mailAddress.hashCode());
+    return result;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null) {
+      return false;
+    }
+    if (obj instanceof MailBox other) {
+      if (mailAddress == null) {
+        if (other.mailAddress != null) {
+          return false;
+        }
+      } else if (!mailAddress.equals(other.mailAddress)) {
+        return false;
+      }
+      return true;
+    }
+    return false;
+  }
+
   public static Builder builder() {
     return new Builder();
   }
