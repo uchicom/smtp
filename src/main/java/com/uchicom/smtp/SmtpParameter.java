@@ -5,6 +5,7 @@ import com.uchicom.server.MultiSocketServer;
 import com.uchicom.server.PoolSocketServer;
 import com.uchicom.server.Server;
 import com.uchicom.server.SingleSocketServer;
+import com.uchicom.smtp.factory.di.DIFactory;
 import com.uchicom.util.Parameter;
 
 /**
@@ -66,33 +67,27 @@ public class SmtpParameter extends Parameter {
   }
 
   public Server createServer() {
-    Server server = null;
-    switch (get("type")) {
-      case "multi":
-        server =
-            new MultiSocketServer(
-                this,
-                (parameter, socket) -> {
-                  return new SmtpProcess(parameter, socket);
-                });
-        break;
-      case "pool":
-        server =
-            new PoolSocketServer(
-                this,
-                (parameter, socket) -> {
-                  return new SmtpProcess(parameter, socket);
-                });
-        break;
-      case "single":
-        server =
-            new SingleSocketServer(
-                this,
-                (parameter, socket) -> {
-                  return new SmtpProcess(parameter, socket);
-                });
-        break;
-    }
-    return server;
+    var logger = DIFactory.logger();
+    return switch (get("type")) {
+      case "multi" ->
+          new MultiSocketServer(
+              this,
+              (parameter, socket) -> {
+                return new SmtpProcess(parameter, logger, socket);
+              });
+      case "pool" ->
+          new PoolSocketServer(
+              this,
+              (parameter, socket) -> {
+                return new SmtpProcess(parameter, logger, socket);
+              });
+      case "single" ->
+          new SingleSocketServer(
+              this,
+              (parameter, socket) -> {
+                return new SmtpProcess(parameter, logger, socket);
+              });
+      default -> throw new IllegalArgumentException("Unknown server type: " + get("type"));
+    };
   }
 }
