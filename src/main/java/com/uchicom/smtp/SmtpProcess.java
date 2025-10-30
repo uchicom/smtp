@@ -50,7 +50,7 @@ import javax.net.ssl.SSLSocketFactory;
  */
 public class SmtpProcess implements ServerProcess {
 
-  private static final Logger logger = Logger.getLogger(SmtpProcess.class.getCanonicalName());
+  private final Logger logger;
 
   private DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss.SSS");
   private Parameter parameter;
@@ -85,17 +85,19 @@ public class SmtpProcess implements ServerProcess {
    * コンストラクタ.
    *
    * @param parameter パラメータ情報
+   * @param logger ロガー
    * @param socket ソケット
    */
-  public SmtpProcess(Parameter parameter, Socket socket) {
+  public SmtpProcess(Parameter parameter, Logger logger, Socket socket) {
     this.parameter = parameter;
+    this.logger = logger;
     this.socket = socket;
   }
 
   /** SMTP処理を実行 */
   public void execute() {
     this.senderAddress = socket.getInetAddress().getHostAddress();
-    logger.log(Level.INFO, String.valueOf(senderAddress));
+    logger.log(Level.INFO, "From IP:" + String.valueOf(senderAddress));
     Writer writer = null;
     BufferedReader br = null;
     PrintStream ps = null;
@@ -113,8 +115,6 @@ public class SmtpProcess implements ServerProcess {
       // DATAの順で処理する
       // 認証状態、非認証状態で、判定できるコマンドを分ける、状態遷移もつける
       while (line != null) {
-        logger.log(Level.INFO, "[" + line + "]");
-        logger.log(Level.INFO, "status:" + authStatus);
         if (authStatus == AuthenticationStatus.USER
             || authStatus == AuthenticationStatus.PASSWORD) {
           switch (authStatus) {
@@ -281,7 +281,7 @@ public class SmtpProcess implements ServerProcess {
         } else if (SmtpUtil.isMailFrom(line)) {
           if (bHelo) {
             mailFrom = line.substring(10).trim().replaceAll("[<>]", "");
-            logger.log(Level.INFO, mailFrom);
+            logger.log(Level.INFO, "From email address:" + mailFrom);
             SmtpUtil.recieveLine(ps, Constants.RECV_250_OK);
             bMailFrom = true;
           } else {
@@ -293,8 +293,7 @@ public class SmtpProcess implements ServerProcess {
             String[] heads = line.split(":");
             String address = heads[1].trim().replaceAll("[<>]", "");
             String[] addresses = address.split("@");
-            logger.log(Level.INFO, addresses[0]);
-            logger.log(Level.INFO, addresses[1]);
+            logger.log(Level.INFO, "To email address:" + address);
             if (addresses[1].equals(parameter.get("host"))) {
               // 宛先チェック
               if (parameter.is("memory")) {
@@ -452,7 +451,7 @@ public class SmtpProcess implements ServerProcess {
   }
 
   public void forceClose() {
-    System.out.println("forceClose!");
+    logger.info("forceClose!");
     if (socket != null && socket.isConnected()) {
       try {
         socket.close();

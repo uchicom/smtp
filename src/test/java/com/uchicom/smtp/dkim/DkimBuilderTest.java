@@ -14,6 +14,7 @@ import java.security.PrivateKey;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.logging.Logger;
 import javax.mail.Address;
 import javax.mail.Message;
 import javax.mail.Session;
@@ -21,13 +22,17 @@ import javax.mail.internet.MimeMessage;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.Spy;
 
 public class DkimBuilderTest extends MockTest {
 
+  @Mock Logger logger;
+
   @Captor ArgumentCaptor<String> textCaptor;
   @Captor ArgumentCaptor<PrivateKey> privateKeyCaptor;
-  @Spy DkimBuilder builder;
+  @InjectMocks @Spy DkimBuilder builder;
 
   @Test
   public void build() throws Exception {

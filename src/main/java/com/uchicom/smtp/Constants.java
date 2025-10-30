@@ -1,6 +1,7 @@
 // (C) 2012 uchicom
 package com.uchicom.smtp;
 
+import java.time.ZoneId;
 import java.util.regex.Pattern;
 
 /**
@@ -112,4 +113,14 @@ public class Constants {
   public static final Pattern pattern =
       Pattern.compile(
           "(^Subject:.*(Viagra|VPXL|Penisole|Cialis|Levitra|[^A-z]+(CV|ED|[Pp]il(l|ls)|[Mm]edicine|hair|Salary)([^A-z]+|$)).*)|( *[Cc]lick *[Hh]ere *)|(^From: $)|([Cc]hat *[Ll]ater)|([Hh]air *[Ll]oss)|([Ss]alary *is *)|([Cc]asino )");
+
+  /** ログ出力ディレクトリ. */
+  public static final String LOG_DIR = "./logs";
+
+  /** ログ出力フォーマット. */
+  public static final String LOG_FORMAT =
+      "%1$tY-%1$tm-%1$td %1$tH:%1$tM:%1$tS.%1$tL %4$s %2$s %5$s%6$s%n";
+
+  /** タイムゾーンID */
+  public static final ZoneId ZONE_ID = ZoneId.systemDefault();
 }
