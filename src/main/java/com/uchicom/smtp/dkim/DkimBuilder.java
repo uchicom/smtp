@@ -17,17 +17,21 @@ import java.time.OffsetDateTime;
 import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
 
 public class DkimBuilder {
+  private final Logger logger;
   MimeMessage message;
   String fromHost;
   PrivateKey privateKey;
   String selector;
 
-  public DkimBuilder() {}
+  public DkimBuilder(Logger logger) {
+    this.logger = logger;
+  }
 
   public DkimBuilder message(MimeMessage message) {
     this.message = message;
@@ -136,7 +140,7 @@ public class DkimBuilder {
         builder.append(lineList.get(i));
         builder.append("\r\n");
       }
-      System.out.println(builder.toString());
+      logger.info(builder.toString());
       return builder.toString();
     }
   }

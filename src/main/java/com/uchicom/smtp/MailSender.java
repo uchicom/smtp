@@ -403,7 +403,7 @@ public class MailSender {
       MimeMessage message, String fromHost, File privateKeyFile, String selector) throws Exception {
     message.addHeader(
         "DKIM-Signature",
-        new DkimBuilder()
+        new DkimBuilder(logger)
             .message(message)
             .fromHost(fromHost)
             .privateKeyFile(privateKeyFile)
