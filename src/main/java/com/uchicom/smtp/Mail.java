@@ -26,10 +26,10 @@ public interface Mail {
    * メールをコピーします.
    *
    * @param boxSet メールボックスのセット
-   * @param senderHostName 送り元ホスト名
    * @param localHostName ローカルホスト名
+   * @param senderHostName 送り元ホスト名
    */
-  public void copy(Set<MailBox> boxSet, String senderHostName, String localHostName);
+  public void copy(Set<MailBox> boxSet, String localHostName, String senderHostName);
 
   /**
    * データを取得します.

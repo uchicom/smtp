@@ -84,7 +84,7 @@ public class TestMain {
         try {
           Thread.sleep(1000);
         } catch (InterruptedException e1) {
-          e1.printStackTrace();
+          throw new RuntimeException(e1);
         }
       }
     }

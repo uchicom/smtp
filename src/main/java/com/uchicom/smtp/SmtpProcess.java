@@ -13,7 +13,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.io.Writer;
-import java.net.InetAddress;
 import java.net.Socket;
 import java.security.KeyManagementException;
 import java.security.KeyStore;
@@ -409,8 +408,8 @@ public class SmtpProcess implements ServerProcess {
         try {
           mail.copy(
               boxSet,
-              socket.getInetAddress().getHostName(),
-              InetAddress.getLocalHost().getHostName());
+              socket.getLocalAddress().getHostName(),
+              socket.getInetAddress().getHostName());
           mail.delete();
         } catch (Exception e) {
           e.printStackTrace();

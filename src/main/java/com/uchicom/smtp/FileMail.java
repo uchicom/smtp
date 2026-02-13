@@ -7,6 +7,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.util.Set;
 import javax.mail.MessagingException;
 
@@ -37,7 +38,8 @@ public class FileMail implements Mail {
 
   @Override
   public Writer getWriter() throws Exception {
-    return new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file)));
+    return new BufferedWriter(
+        new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8));
   }
 
   @Override
