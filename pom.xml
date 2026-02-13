@@ -41,9 +41,6 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <spotless.version>3.1.0</spotless.version>
-    <java.version>20</java.version>
-    <maven.compiler.target>${java.version}</maven.compiler.target>
-    <maven.compiler.source>${java.version}</maven.compiler.source>
   </properties>
   <dependencies>
     <dependency>
@@ -54,7 +51,7 @@
     <dependency>
       <groupId>com.uchicom</groupId>
       <artifactId>server</artifactId>
-      <version>0.2.0</version>
+      <version>0.2.2</version>
     </dependency>
     <dependency>
       <groupId>javax.mail</groupId>
@@ -78,14 +75,14 @@
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter-api</artifactId>
+      <artifactId>junit-jupiter</artifactId>
       <version>6.0.2</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.mockito</groupId>
-      <artifactId>mockito-inline</artifactId>
-      <version>5.2.0</version>
+      <artifactId>mockito-core</artifactId>
+      <version>5.21.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -156,8 +153,22 @@
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>properties</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <version>3.5.4</version>
+        <configuration>
+          <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar}</argLine>
+        </configuration>
       </plugin>
       <plugin>
         <groupId>com.diffplug.spotless</groupId>

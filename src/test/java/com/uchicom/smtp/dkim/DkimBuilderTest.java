@@ -10,6 +10,7 @@ import static org.mockito.Mockito.spy;
 
 import com.uchicom.smtp.MockTest;
 import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.security.PrivateKey;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -74,7 +75,9 @@ public class DkimBuilderTest extends MockTest {
   public void createB() throws Exception {
 
     // mock
-    doReturn("from@from ".getBytes()).when(builder).getSign(textCaptor.capture());
+    doReturn("from@from ".getBytes(StandardCharsets.US_ASCII))
+        .when(builder)
+        .getSign(textCaptor.capture());
     // test method
     String result = builder.createB("from:from@from\r\n", "dkim:dkim");
     // assert
@@ -96,7 +99,7 @@ public class DkimBuilderTest extends MockTest {
     builder.message(message);
     String result = builder.normalizeHeader();
     // assert
-    assertThat(result).isEqualTo("subject:su b\r\n" + "from:from @from\r\n");
+    assertThat(result).isEqualTo("subject:su b\r\nfrom:from @from\r\n");
   }
 
   @Test
@@ -104,13 +107,15 @@ public class DkimBuilderTest extends MockTest {
 
     // mock
     MimeMessage message = spy(new MimeMessage((Session) null));
-    String body = "a  b  c  d   \r\n" + "e  f  g  h   \r\n" + "  a  b \r\n" + "\r\n\r\n";
-    doReturn(new ByteArrayInputStream(body.getBytes())).when(message).getRawInputStream();
+    String body = "a  b  c  d   \r\ne  f  g  h   \r\n  a  b \r\n\r\n\r\n";
+    doReturn(new ByteArrayInputStream(body.getBytes(StandardCharsets.US_ASCII)))
+        .when(message)
+        .getRawInputStream();
     // test method
     builder.message(message);
     String result = builder.normalizeBody();
     // assert
-    assertThat(result).isEqualTo("a b c d\r\n" + "e f g h\r\n" + " a b\r\n");
+    assertThat(result).isEqualTo("a b c d\r\ne f g h\r\n a b\r\n");
   }
 
   @Test

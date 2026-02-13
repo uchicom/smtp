@@ -29,7 +29,7 @@ public class MemoryMail implements Mail {
   public void delete() {}
 
   @Override
-  public void copy(Set<MailBox> boxSet, String senderHostName, String localHostName) {
+  public void copy(Set<MailBox> boxSet, String localHostName, String senderHostName) {
     for (MailBox mailBox : boxSet) {
       synchronized (mailBox.getMailList()) {
         MemoryMail mail = new MemoryMail(mailBox.getMailAddress(), senderHostName, localHostName);
