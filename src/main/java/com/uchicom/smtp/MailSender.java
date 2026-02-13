@@ -27,9 +27,6 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 
-/**
- * @author uchicom: Shigeki Uchiyama
- */
 public class MailSender {
 
   private static final Logger logger = Logger.getLogger(MailSender.class.getCanonicalName());

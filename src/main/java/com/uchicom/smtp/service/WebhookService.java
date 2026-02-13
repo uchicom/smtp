@@ -13,7 +13,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpRequest.BodyPublishers;
-import java.net.http.HttpRequest.Builder;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.util.ArrayList;
 import java.util.Enumeration;
@@ -178,19 +177,17 @@ public class WebhookService {
     if (send.body.parameter != null) {
       for (Entry<String, ParameterDto> entry : send.body.parameter.entrySet()) {
         switch (entry.getValue().target) {
-          case "subject":
-            parameterMap.putAll(match(entry.getKey(), entry.getValue().pattern, subject));
-            break;
-          case "content":
-            parameterMap.putAll(match(entry.getKey(), entry.getValue().pattern, content));
-            break;
-          default:
-            headerList.forEach(
-                header -> {
-                  if (!entry.getValue().target.equals(header.getName())) return;
-                  parameterMap.putAll(
-                      match(entry.getKey(), entry.getValue().pattern, header.getValue()));
-                });
+          case "subject" ->
+              parameterMap.putAll(match(entry.getKey(), entry.getValue().pattern, subject));
+          case "content" ->
+              parameterMap.putAll(match(entry.getKey(), entry.getValue().pattern, content));
+          default ->
+              headerList.forEach(
+                  header -> {
+                    if (!entry.getValue().target.equals(header.getName())) return;
+                    parameterMap.putAll(
+                        match(entry.getKey(), entry.getValue().pattern, header.getValue()));
+                  });
         }
       }
       logger.info(parameterMap.toString());
@@ -200,9 +197,9 @@ public class WebhookService {
       template = template.replace(entry.getKey(), entry.getValue());
     }
 
-    Builder builder = HttpRequest.newBuilder().uri(URI.create(send.url));
+    var builder = HttpRequest.newBuilder().uri(URI.create(send.url));
     if (send.header != null) {
-      for (Entry<String, String> entry : send.header.entrySet()) {
+      for (var entry : send.header.entrySet()) {
         builder.header(entry.getKey(), entry.getValue());
       }
     }

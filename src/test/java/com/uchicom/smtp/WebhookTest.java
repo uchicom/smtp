@@ -11,7 +11,7 @@ public class WebhookTest {
         mailBox.webhook(new File("test.eml"));
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      throw new RuntimeException(e);
     }
   }
 }
