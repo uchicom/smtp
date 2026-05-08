@@ -112,7 +112,7 @@ public class Constants {
   /** 迷惑メールパターン */
   public static final Pattern pattern =
       Pattern.compile(
-          "(^Subject:.*(Viagra|VPXL|Penisole|Cialis|Levitra|[^A-z]+(CV|ED|[Pp]il(l|ls)|[Mm]edicine|hair|Salary)([^A-z]+|$)).*)|( *[Cc]lick *[Hh]ere *)|(^From: $)|([Cc]hat *[Ll]ater)|([Hh]air *[Ll]oss)|([Ss]alary *is *)|([Cc]asino )");
+          "(^Subject:.*(Viagra|VPXL|Penisole|Cialis|Levitra|[^A-z]+(CV|ED|[Pp]il(l|ls)|[Mm]edicine|hair|Salary)([^A-z]+|$)).*)|( *[Cc]lick *[Hh]ere *)|([Cc]hat *[Ll]ater)|([Hh]air *[Ll]oss)|([Ss]alary *is *)|([Cc]asino )");
 
   /** ログ出力ディレクトリ. */
   public static final String LOG_DIR = "./logs";
