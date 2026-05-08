@@ -64,7 +64,7 @@ public class ConstantsTest {
     assertThat(Constants.pattern.matcher("Subject:Cialisb").find()).isTrue();
     assertThat(Constants.pattern.matcher("Subject:Levitrab").find()).isTrue();
     assertThat(Constants.pattern.matcher(" Click Here ").find()).isTrue();
-    assertThat(Constants.pattern.matcher("From: ").find()).isTrue();
+    assertThat(Constants.pattern.matcher("From: ").find()).isFalse();
     assertThat(Constants.pattern.matcher("Salary is ").find()).isTrue();
     assertThat(Constants.pattern.matcher(" Casino ").find()).isTrue();
 
