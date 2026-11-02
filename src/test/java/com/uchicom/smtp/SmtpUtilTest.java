@@ -15,6 +15,44 @@ public class SmtpUtilTest {
   @TempDir Path tempDir;
 
   @Test
+  public void verifyPassword_ok() throws IOException {
+    Path user = Files.createDirectory(tempDir.resolve("user"));
+    Files.writeString(user.resolve(Constants.PASSWORD_FILE_NAME), "\nsecret\n");
+
+    assertThat(SmtpUtil.verifyPassword(tempDir.toFile(), "user", "secret")).isTrue();
+  }
+
+  @Test
+  public void verifyPassword_mismatch() throws IOException {
+    Path user = Files.createDirectory(tempDir.resolve("user"));
+    Files.writeString(user.resolve(Constants.PASSWORD_FILE_NAME), "secret\n");
+
+    assertThat(SmtpUtil.verifyPassword(tempDir.toFile(), "user", "wrong")).isFalse();
+    assertThat(SmtpUtil.verifyPassword(tempDir.toFile(), "user", "")).isFalse();
+  }
+
+  @Test
+  public void verifyPassword_noPasswordFile() throws IOException {
+    Files.createDirectory(tempDir.resolve("user"));
+
+    assertThat(SmtpUtil.verifyPassword(tempDir.toFile(), "user", "secret")).isFalse();
+  }
+
+  @Test
+  public void verifyPassword_emptyPasswordFile() throws IOException {
+    Path user = Files.createDirectory(tempDir.resolve("user"));
+    Files.writeString(user.resolve(Constants.PASSWORD_FILE_NAME), "\n\n");
+
+    assertThat(SmtpUtil.verifyPassword(tempDir.toFile(), "user", "")).isFalse();
+  }
+
+  @Test
+  public void verifyPassword_noUser() {
+    assertThat(SmtpUtil.verifyPassword(tempDir.toFile(), "nouser", "secret")).isFalse();
+    assertThat(SmtpUtil.verifyPassword(tempDir.toFile(), "../x", "secret")).isFalse();
+  }
+
+  @Test
   public void resolveUserDir_valid() throws IOException {
     Path user = Files.createDirectory(tempDir.resolve("user.name-1_a"));
 
