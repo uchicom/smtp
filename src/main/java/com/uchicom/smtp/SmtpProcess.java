@@ -139,29 +139,22 @@ public class SmtpProcess implements ServerProcess {
               }
               break;
             case PASSWORD:
-              String pass = new String(Base64.getDecoder().decode(line));
-              File passwordFile =
-                  new File(
-                      new File(parameter.getFile("dir"), authName), Constants.PASSWORD_FILE_NAME);
-              if (passwordFile.exists() && passwordFile.isFile()) {
-                try (BufferedReader passReader =
-                    new BufferedReader(
-                        new InputStreamReader(new FileInputStream(passwordFile))); ) {
-                  String password = passReader.readLine();
-                  while ("".equals(password)) {
-                    password = passReader.readLine();
-                  }
-                  if (pass.equals(password)) {
-
-                    SmtpUtil.recieveLine(ps, Constants.RECV_235);
-                    bAuth = true;
-                    authStatus = AuthenticationStatus.AUTH;
-                  } else {
-                    // パスワード不一致エラー
-                    SmtpUtil.recieveLine(ps, Constants.RECV_535);
-                    authStatus = AuthenticationStatus.NOAUTH;
-                  }
-                }
+              String pass;
+              try {
+                pass = new String(Base64.getDecoder().decode(line), StandardCharsets.UTF_8);
+              } catch (IllegalArgumentException e) {
+                SmtpUtil.recieveLine(ps, "501 Invalid base64 data");
+                authStatus = AuthenticationStatus.NOAUTH;
+                break;
+              }
+              if (SmtpUtil.verifyPassword(parameter.getFile("dir"), authName, pass)) {
+                SmtpUtil.recieveLine(ps, Constants.RECV_235);
+                bAuth = true;
+                authStatus = AuthenticationStatus.AUTH;
+              } else {
+                // ユーザー・パスワードファイルなし、パスワード不一致エラー
+                SmtpUtil.recieveLine(ps, Constants.RECV_535);
+                authStatus = AuthenticationStatus.NOAUTH;
               }
               break;
             default:
@@ -258,9 +251,11 @@ public class SmtpProcess implements ServerProcess {
             SmtpUtil.recieveLine(
                 ps, Constants.RECV_250, "-", parameter.get("host"), " Hello ", senderAddress);
             if (!(socket instanceof SSLSocket) && hasKeyStore()) {
-              SmtpUtil.recieveLine(ps, Constants.RECV_250, "-STARTTLS");
+              // STARTTLS完了までAUTHは広告しない
+              SmtpUtil.recieveLine(ps, Constants.RECV_250, " STARTTLS");
+            } else {
+              SmtpUtil.recieveLine(ps, Constants.RECV_250, " AUTH LOGIN"); // TODO CRAM-MD5も追加したい
             }
-            SmtpUtil.recieveLine(ps, Constants.RECV_250, " AUTH LOGIN"); // TODO CRAM-MD5も追加したい
           } else {
 
             if ((socket instanceof SSLSocket) || !hasKeyStore()) {
@@ -283,8 +278,12 @@ public class SmtpProcess implements ServerProcess {
             SmtpUtil.recieveLine(ps, "502", " Command not implemented");
           }
         } else if (SmtpUtil.isAuthLogin(line) && parameter.is("transfer")) {
-          authStatus = AuthenticationStatus.USER;
-          SmtpUtil.recieveLine(ps, Constants.RECV_334, " VXNlcm5hbWU6");
+          if (!(socket instanceof SSLSocket) && hasKeyStore()) {
+            SmtpUtil.recieveLine(ps, "530 Must issue a STARTTLS command first");
+          } else {
+            authStatus = AuthenticationStatus.USER;
+            SmtpUtil.recieveLine(ps, Constants.RECV_334, " VXNlcm5hbWU6");
+          }
         } else if (SmtpUtil.isRset(line)) {
           SmtpUtil.recieveLine(ps, Constants.RECV_250_OK);
           init();

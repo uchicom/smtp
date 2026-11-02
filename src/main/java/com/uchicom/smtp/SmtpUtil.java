@@ -1,13 +1,17 @@
 // (C) 2014 uchicom
 package com.uchicom.smtp;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 
@@ -163,6 +167,40 @@ public class SmtpUtil {
       return dir;
     } catch (IOException e) {
       return null;
+    }
+  }
+
+  /**
+   * パスワードを検証する. ユーザーまたはパスワードファイルが存在しない場合はfalse.
+   *
+   * @param baseDir ユーザーディレクトリの親
+   * @param name ユーザー名
+   * @param pass 入力されたパスワード
+   * @return 一致する場合はtrue
+   */
+  public static boolean verifyPassword(File baseDir, String name, String pass) {
+    File dir = resolveUserDir(baseDir, name);
+    if (dir == null || pass == null) {
+      return false;
+    }
+    File passwordFile = new File(dir, Constants.PASSWORD_FILE_NAME);
+    if (!passwordFile.isFile()) {
+      return false;
+    }
+    try (BufferedReader reader =
+        new BufferedReader(
+            new InputStreamReader(new FileInputStream(passwordFile), StandardCharsets.UTF_8))) {
+      String password = reader.readLine();
+      while ("".equals(password)) {
+        password = reader.readLine();
+      }
+      if (password == null) {
+        return false;
+      }
+      return MessageDigest.isEqual(
+          pass.getBytes(StandardCharsets.UTF_8), password.getBytes(StandardCharsets.UTF_8));
+    } catch (IOException e) {
+      return false;
     }
   }
 
