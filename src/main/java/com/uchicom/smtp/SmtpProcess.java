@@ -14,6 +14,7 @@ import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.io.Writer;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyManagementException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
@@ -118,9 +119,19 @@ public class SmtpProcess implements ServerProcess {
             || authStatus == AuthenticationStatus.PASSWORD) {
           switch (authStatus) {
             case USER:
-              String name = new String(Base64.getDecoder().decode(line));
-              File dir = new File(parameter.getFile("dir"), name);
-              if (dir.exists() && dir.isDirectory()) {
+              String name;
+              try {
+                name = new String(Base64.getDecoder().decode(line), StandardCharsets.UTF_8);
+              } catch (IllegalArgumentException e) {
+                SmtpUtil.recieveLine(ps, "501 Invalid base64 data");
+                authStatus = AuthenticationStatus.NOAUTH;
+                break;
+              }
+              File dir = SmtpUtil.resolveUserDir(parameter.getFile("dir"), name);
+              if (dir == null) {
+                SmtpUtil.recieveLine(ps, Constants.RECV_535);
+                authStatus = AuthenticationStatus.NOAUTH;
+              } else {
                 authStatus = AuthenticationStatus.PASSWORD;
                 authName = name;
 

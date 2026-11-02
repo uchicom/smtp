@@ -47,6 +47,9 @@ public class Constants {
 
   // No such user here
 
+  /** 認証ユーザー名の正規表現 */
+  public static Pattern REG_EXP_USER_NAME = Pattern.compile("[A-Za-z0-9._-]+");
+
   // SMTPコマンド正規表現
   /** EHLOの正規表現(大文字小文字後続スペース) */
   public static Pattern REG_EXP_EHLO = Pattern.compile("^ *[Ee][Hh][Ll][Oo] +[^ ]+ *$");

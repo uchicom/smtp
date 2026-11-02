@@ -145,6 +145,28 @@ public class SmtpUtil {
   }
 
   /**
+   * 認証ユーザーのメールボックスディレクトリを解決する.
+   *
+   * @param baseDir メールボックスの基準フォルダ
+   * @param name ユーザー名
+   * @return 妥当なユーザー名で基準フォルダ配下に存在するディレクトリ。それ以外はnull
+   */
+  public static File resolveUserDir(File baseDir, String name) {
+    if (name == null || !Constants.REG_EXP_USER_NAME.matcher(name).matches()) {
+      return null;
+    }
+    try {
+      File dir = new File(baseDir, name).getCanonicalFile();
+      if (!baseDir.getCanonicalFile().equals(dir.getParentFile()) || !dir.isDirectory()) {
+        return null;
+      }
+      return dir;
+    } catch (IOException e) {
+      return null;
+    }
+  }
+
+  /**
    * ステータス行を出力する.
    *
    * @param ps 出力ストリーム
