@@ -369,7 +369,11 @@ public class SmtpProcess implements ServerProcess {
           } else if (bMailFrom) {
             String address = addresses[0] + "@" + addresses[1];
             logger.log(Level.INFO, "To email address:" + address);
-            if (addresses[1].equals(parameter.get("host"))) {
+            boolean local = addresses[1].equals(parameter.get("host"));
+            if (local && bTransfer || !local && !boxSet.isEmpty()) {
+              // ローカル宛てと転送宛ては同一メールに混在させない
+              SmtpUtil.recieveLine(ps, Constants.RECV_452_MIXED_RCPT);
+            } else if (local) {
               // 宛先チェック
               if (parameter.is("memory")) {
                 for (String user : Context.singleton().getUsers()) {
@@ -559,7 +563,9 @@ public class SmtpProcess implements ServerProcess {
     bOverSize = false;
     dataSize = 0;
     rcptCount = 0;
+    bTransfer = false;
     boxSet.clear();
+    transferList.clear();
   }
 
   public long getStartTime() {

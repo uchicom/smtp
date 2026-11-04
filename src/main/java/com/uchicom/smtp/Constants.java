@@ -51,6 +51,8 @@ public class Constants {
   /** 返却メッセージ(452(宛先数超過)) */
   public static String RECV_452_TOO_MANY_RCPT = "452 Too many recipients";
 
+  public static String RECV_452_MIXED_RCPT = "452 Local and remote recipients cannot be mixed";
+
   /** 返却メッセージ(552(サイズ超過)) */
   public static String RECV_552 = "552 Message size exceeds fixed maximum message size";
 
