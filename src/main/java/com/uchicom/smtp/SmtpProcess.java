@@ -332,6 +332,9 @@ public class SmtpProcess implements ServerProcess {
               SmtpUtil.recieveLine(ps, Constants.RECV_501_ADDRESS);
             } else if (isDeclaredSizeOver(line)) {
               SmtpUtil.recieveLine(ps, Constants.RECV_552);
+            } else if (!isSenderAllowed(parsed)) {
+              logger.log(Level.WARNING, "MAIL FROM not allowed for " + authName);
+              SmtpUtil.recieveLine(ps, Constants.RECV_553_SENDER);
             } else {
               mailFrom = parsed[0].isEmpty() ? "" : parsed[0] + "@" + parsed[1];
               logger.log(Level.INFO, "From email address:" + mailFrom);
@@ -526,6 +529,19 @@ public class SmtpProcess implements ServerProcess {
     }
   }
 
+  /**
+   * MAIL FROMがAUTHユーザーと整合しているか. strictFrom指定の転送モードで認証済みの場合のみ検証し、 ヌル送信元や他人のアドレスは拒否する.
+   *
+   * @param parsed MAIL FROMを解析した結果(ローカル部, ドメイン)
+   * @return 許可する場合はtrue
+   */
+  private boolean isSenderAllowed(String[] parsed) {
+    if (!bAuth || !parameter.is("transfer") || !parameter.is("strictFrom")) {
+      return true;
+    }
+    return parsed[0].equals(authName) && parsed[1].equalsIgnoreCase(parameter.get("host"));
+  }
+
   /** 初期化. */
   private void init() {
     mail = null;
@@ -592,6 +608,7 @@ public class SmtpProcess implements ServerProcess {
                 MailSender.sendMail(
                     parameter.get("host"),
                     mxHost,
+                    mailFrom,
                     address,
                     mail.getData(),
                     parameter.getFile("dkim"),

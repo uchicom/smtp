@@ -45,6 +45,9 @@ public class Constants {
   /** 返却メッセージ(501(アドレス構文エラー)) */
   public static String RECV_501_ADDRESS = "501 Syntax error in address";
 
+  /** 返却メッセージ(553(送信者アドレス不一致)) */
+  public static String RECV_553_SENDER = "553 Sender address rejected: not owned by user";
+
   /** 返却メッセージ(500(行長超過)) */
   public static String RECV_500_LINE_TOO_LONG = "500 Line too long";
 

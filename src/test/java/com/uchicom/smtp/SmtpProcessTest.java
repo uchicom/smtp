@@ -366,6 +366,38 @@ public class SmtpProcessTest {
     assertThat(new File(dir, "user").listFiles()).hasSize(1);
   }
 
+  @Test
+  public void strictFromRejectsForeignSender(@TempDir File dir) throws Exception {
+    String[] base = transferArgs(dir);
+    String[] args = java.util.Arrays.copyOf(base, base.length + 2);
+    args[base.length] = "-strictFrom";
+    args[base.length + 1] = "true";
+    session(
+        args,
+        (reader, ps) -> {
+          assertThat(reader.readLine()).startsWith("220");
+          assertThat(send(reader, ps, "EHLO test")).startsWith("250");
+          authenticate(reader, ps);
+          assertThat(send(reader, ps, "MAIL FROM:<a@example.com>")).startsWith("553");
+          assertThat(send(reader, ps, "MAIL FROM:<other@localhost>")).startsWith("553");
+          assertThat(send(reader, ps, "MAIL FROM:<>")).startsWith("553");
+          assertThat(send(reader, ps, "MAIL FROM:<auth@localhost>")).startsWith("250");
+        });
+  }
+
+  @Test
+  public void withoutStrictFromAnySenderIsAccepted(@TempDir File dir) throws Exception {
+    session(
+        transferArgs(dir),
+        (reader, ps) -> {
+          assertThat(reader.readLine()).startsWith("220");
+          assertThat(send(reader, ps, "EHLO test")).startsWith("250");
+          authenticate(reader, ps);
+          assertThat(send(reader, ps, "MAIL FROM:<>")).startsWith("250");
+          assertThat(send(reader, ps, "MAIL FROM:<a@example.com>")).startsWith("250");
+        });
+  }
+
   private SmtpProcess process() {
     return new SmtpProcess(new SmtpParameter(new String[0]), Logger.getAnonymousLogger(), null);
   }
