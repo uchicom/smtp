@@ -344,7 +344,7 @@ public class SmtpProcessTest {
   }
 
   @Test
-  public void mixedRecipientsAreRejected(@TempDir File dir) throws Exception {
+  public void mixedRecipientsAreAccepted(@TempDir File dir) throws Exception {
     session(
         transferArgs(dir),
         (reader, ps) -> {
@@ -352,13 +352,16 @@ public class SmtpProcessTest {
           assertThat(send(reader, ps, "EHLO test")).startsWith("250");
           authenticate(reader, ps);
           assertThat(send(reader, ps, "MAIL FROM:<a@example.com>")).startsWith("250");
-          assertThat(send(reader, ps, "RCPT TO:<user@localhost>")).startsWith("250");
-          assertThat(send(reader, ps, "RCPT TO:<x@remote.example>")).startsWith("452");
-          assertThat(send(reader, ps, "RSET")).startsWith("250");
-          assertThat(send(reader, ps, "MAIL FROM:<a@example.com>")).startsWith("250");
           assertThat(send(reader, ps, "RCPT TO:<x@remote.example>")).startsWith("250");
-          assertThat(send(reader, ps, "RCPT TO:<user@localhost>")).startsWith("452");
+          // 外部宛ての後にローカル宛て(BCC想定)を指定しても受理される
+          assertThat(send(reader, ps, "RCPT TO:<user@localhost>")).startsWith("250");
+          assertThat(send(reader, ps, "DATA")).startsWith("354");
+          ps.print("Subject: test\r\n\r\nbody\r\n");
+          ps.flush();
+          // 外部宛ては配送できないため250にはならないが、ローカル宛ては配送される
+          assertThat(send(reader, ps, ".")).doesNotStartWith("250");
         });
+    assertThat(new File(dir, "user").listFiles()).hasSize(1);
   }
 
   private SmtpProcess process() {
