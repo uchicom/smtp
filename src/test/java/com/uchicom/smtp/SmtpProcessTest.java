@@ -2,17 +2,23 @@
 package com.uchicom.smtp;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.sun.mail.smtp.SMTPSendFailedException;
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 import java.util.logging.Logger;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 public class SmtpProcessTest {
 
@@ -182,6 +188,96 @@ public class SmtpProcessTest {
           assertThat(send(reader, ps, ".")).startsWith("250");
           assertThat(send(reader, ps, "NOOP")).startsWith("250");
         });
+  }
+
+  @Test
+  public void copyFailureReturns451(@TempDir File dir) throws Exception {
+    File box = new File(dir, "user");
+    assertThat(box.mkdirs()).isTrue();
+    session(
+        new String[] {"-dir", dir.getAbsolutePath(), "-host", "localhost"},
+        (reader, ps) -> {
+          assertThat(reader.readLine()).startsWith("220");
+          assertThat(send(reader, ps, "HELO test")).startsWith("250");
+          assertThat(send(reader, ps, "MAIL FROM:<a@example.com>")).startsWith("250");
+          assertThat(send(reader, ps, "RCPT TO:<user@localhost>")).startsWith("250");
+          // 宛先確認後にメールボックスを使用不可にして、コピーを失敗させる
+          assertThat(box.delete()).isTrue();
+          assertThat(box.createNewFile()).isTrue();
+          assertThat(send(reader, ps, "DATA")).startsWith("354");
+          ps.print("Subject: test\r\n\r\nbody\r\n");
+          ps.flush();
+          assertThat(send(reader, ps, ".")).startsWith("451");
+        });
+  }
+
+  private SmtpProcess process() {
+    return new SmtpProcess(new SmtpParameter(new String[0]), Logger.getAnonymousLogger(), null);
+  }
+
+  @Test
+  public void sendToHostsFallsBackToNextHost() throws Exception {
+    List<String> tried = new ArrayList<>();
+    process()
+        .sendToHosts(
+            new String[] {"mx1", "mx2", "mx3"},
+            host -> {
+              tried.add(host);
+              if (host.equals("mx1")) {
+                throw new IOException("connection refused");
+              }
+            });
+    assertThat(tried).containsExactly("mx1", "mx2");
+  }
+
+  @Test
+  public void sendToHostsThrowsLastWhenAllFail() {
+    List<String> tried = new ArrayList<>();
+    assertThatThrownBy(
+            () ->
+                process()
+                    .sendToHosts(
+                        new String[] {"mx1", "mx2"},
+                        host -> {
+                          tried.add(host);
+                          throw new IOException(host);
+                        }))
+        .isInstanceOf(IOException.class)
+        .hasMessage("mx2");
+    assertThat(tried).containsExactly("mx1", "mx2");
+  }
+
+  @Test
+  public void sendToHostsStopsOnPermanentFailure() {
+    List<String> tried = new ArrayList<>();
+    assertThatThrownBy(
+            () ->
+                process()
+                    .sendToHosts(
+                        new String[] {"mx1", "mx2"},
+                        host -> {
+                          tried.add(host);
+                          throw new RuntimeException(
+                              new SMTPSendFailedException(
+                                  "RCPT TO", 550, "no such user", null, null, null, null));
+                        }))
+        .isInstanceOf(RuntimeException.class);
+    assertThat(tried).containsExactly("mx1");
+  }
+
+  @Test
+  public void isPermanentFailure() {
+    assertThat(SmtpProcess.isPermanentFailure(new IOException("x"))).isFalse();
+    assertThat(
+            SmtpProcess.isPermanentFailure(
+                new SMTPSendFailedException("RCPT TO", 450, "busy", null, null, null, null)))
+        .isFalse();
+    assertThat(
+            SmtpProcess.isPermanentFailure(
+                new RuntimeException(
+                    new SMTPSendFailedException(
+                        "RCPT TO", 554, "rejected", null, null, null, null))))
+        .isTrue();
   }
 
   @Test

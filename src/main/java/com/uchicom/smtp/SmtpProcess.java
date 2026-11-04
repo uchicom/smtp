@@ -1,6 +1,8 @@
 // (C) 2014 uchicom
 package com.uchicom.smtp;
 
+import com.sun.mail.smtp.SMTPAddressFailedException;
+import com.sun.mail.smtp.SMTPSendFailedException;
 import com.uchicom.server.ServerProcess;
 import com.uchicom.smtp.type.AuthenticationStatus;
 import com.uchicom.util.Parameter;
@@ -23,10 +25,12 @@ import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Comparator;
+import java.util.Deque;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
@@ -34,6 +38,7 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
+import javax.mail.MessagingException;
 import javax.naming.NamingException;
 import javax.naming.directory.Attribute;
 import javax.naming.directory.Attributes;
@@ -218,6 +223,7 @@ public class SmtpProcess implements ServerProcess {
           } else if (!bContinuation && ".".equals(line)) {
             // メッセージ終了
             writer.close();
+            Exception failure = null;
             if (bSpam) {
               // 迷惑メールフォルダに移動
               try {
@@ -231,38 +237,15 @@ public class SmtpProcess implements ServerProcess {
                     socket.getLocalAddress().getHostName(),
                     socket.getInetAddress().getHostName());
               } catch (Exception e) {
-                e.printStackTrace();
+                logger.log(Level.WARNING, "spam copy failed", e);
               }
             } else if (bTransfer) {
               logger.log(Level.INFO, "transferList:" + transferList);
-              for (String address : transferList) {
-                // 転送処理を実行する。
-                logger.log(Level.INFO, "transfer:" + address);
-                String[] addresses = address.split("@");
-                String[] hosts = lookupMailHosts(addresses[1]);
-                boolean send = false;
-                for (String mxHost : hosts) {
-
-                  MailSender.sendMail(
-                      parameter.get("host"),
-                      mxHost,
-                      address,
-                      mail.getData(),
-                      parameter.getFile("dkim"),
-                      parameter.get("dkimSelector"));
-                  send = true;
-                  break;
-                }
-                // MXで送信できなかった場合は、ホスト名に送信する
-                if (!send) {
-                  MailSender.sendMail(
-                      parameter.get("host"),
-                      addresses[1],
-                      address,
-                      mail.getData(),
-                      parameter.getFile("dkim"),
-                      parameter.get("dkimSelector"));
-                }
+              try {
+                transfer();
+              } catch (Exception e) {
+                logger.log(Level.WARNING, "transfer failed", e);
+                failure = e;
               }
             } else {
               // メッセージコピー処理
@@ -272,7 +255,8 @@ public class SmtpProcess implements ServerProcess {
                     socket.getLocalAddress().getHostName(),
                     socket.getInetAddress().getHostName());
               } catch (Exception e) {
-                e.printStackTrace();
+                logger.log(Level.WARNING, "copy failed", e);
+                failure = e;
               }
             }
             mail.delete();
@@ -281,6 +265,10 @@ public class SmtpProcess implements ServerProcess {
 
             if (bSpam) {
               SmtpUtil.recieveLine(ps, "550");
+            } else if (failure != null) {
+              // 配送できていないため250は返さず、送信元に再送/失敗を判断させる
+              SmtpUtil.recieveLine(
+                  ps, isPermanentFailure(failure) ? Constants.RECV_554 : Constants.RECV_451);
             } else {
               SmtpUtil.recieveLine(ps, Constants.RECV_250_OK);
             }
@@ -484,9 +472,9 @@ public class SmtpProcess implements ServerProcess {
         SmtpUtil.recieveLine(ps, Constants.RECV_500_LINE_TOO_LONG);
       }
     } catch (IOException e) {
-      e.printStackTrace();
+      logger.log(Level.WARNING, e.getMessage(), e);
     } catch (Throwable e) {
-      e.printStackTrace();
+      logger.log(Level.SEVERE, e.getMessage(), e);
     } finally {
       if (acquired) {
         ConnectionLimiter.singleton().release(senderAddress);
@@ -495,7 +483,7 @@ public class SmtpProcess implements ServerProcess {
         try {
           br.close();
         } catch (IOException e) {
-          e.printStackTrace();
+          logger.log(Level.WARNING, e.getMessage(), e);
         }
       }
       if (ps != null) {
@@ -510,7 +498,7 @@ public class SmtpProcess implements ServerProcess {
               socket.getInetAddress().getHostName());
           mail.delete();
         } catch (Exception e) {
-          e.printStackTrace();
+          logger.log(Level.WARNING, e.getMessage(), e);
         }
         mail = null;
       }
@@ -518,15 +506,14 @@ public class SmtpProcess implements ServerProcess {
         try {
           writer.close();
         } catch (IOException e) {
-          // TODO 自動生成された catch ブロック
-          e.printStackTrace();
+          logger.log(Level.WARNING, e.getMessage(), e);
         }
       }
       if (socket != null) {
         try {
           socket.close();
         } catch (Exception e) {
-          e.printStackTrace();
+          logger.log(Level.WARNING, e.getMessage(), e);
         } finally {
           socket = null;
         }
@@ -585,7 +572,7 @@ public class SmtpProcess implements ServerProcess {
       try {
         socket.close();
       } catch (IOException e) {
-        e.printStackTrace();
+        logger.log(Level.WARNING, e.getMessage(), e);
       }
       socket = null;
     }
@@ -602,12 +589,117 @@ public class SmtpProcess implements ServerProcess {
           try {
             mailList.add(new FileMail(file));
           } catch (IOException e) {
-            e.printStackTrace();
+            logger.log(Level.WARNING, e.getMessage(), e);
           }
         }
       }
       return mailList;
     }
+  }
+
+  /**
+   * 転送先ごとにMXを優先度順に試行して転送する.
+   *
+   * @throws Exception いずれかの転送先に配送できなかった場合
+   */
+  private void transfer() throws Exception {
+    Exception failure = null;
+    for (String address : transferList) {
+      logger.log(Level.INFO, "transfer:" + address);
+      try {
+        String domain = address.substring(address.indexOf('@') + 1);
+        sendToHosts(
+            lookupMailHosts(domain),
+            mxHost ->
+                MailSender.sendMail(
+                    parameter.get("host"),
+                    mxHost,
+                    address,
+                    mail.getData(),
+                    parameter.getFile("dkim"),
+                    parameter.get("dkimSelector")));
+      } catch (Exception e) {
+        logger.log(Level.WARNING, "transfer failed:" + address, e);
+        if (failure == null) {
+          failure = e;
+        } else {
+          failure.addSuppressed(e);
+        }
+      }
+    }
+    if (failure != null) {
+      throw failure;
+    }
+  }
+
+  /** ホストへの送信処理. */
+  @FunctionalInterface
+  interface HostSender {
+    void send(String host) throws Exception;
+  }
+
+  /**
+   * 先頭から順にホストへ送信し、成功した時点で終了する. 一時的な失敗は次のホストを試行し、恒久的な失敗(5xx)は即座に送出する.
+   *
+   * @param hosts 優先度順のホスト一覧
+   * @param sender 送信処理
+   * @throws Exception 全ホストで失敗した場合は最後の例外、ホストがない場合はIllegalArgumentException
+   */
+  void sendToHosts(String[] hosts, HostSender sender) throws Exception {
+    if (hosts.length == 0) {
+      throw new IllegalArgumentException("no host");
+    }
+    Exception last = null;
+    for (String host : hosts) {
+      try {
+        sender.send(host);
+        return;
+      } catch (Exception e) {
+        logger.log(Level.WARNING, "send failed:" + host, e);
+        if (isPermanentFailure(e)) {
+          throw e;
+        }
+        if (last != null) {
+          e.addSuppressed(last);
+        }
+        last = e;
+      }
+    }
+    throw last;
+  }
+
+  /**
+   * 失敗が恒久的(SMTP応答コード5xx)か判定する.
+   *
+   * @param e 例外
+   * @return 恒久的な失敗の場合はtrue
+   */
+  static boolean isPermanentFailure(Throwable e) {
+    Set<Throwable> visited = new HashSet<>();
+    Deque<Throwable> queue = new ArrayDeque<>();
+    queue.add(e);
+    while (!queue.isEmpty()) {
+      Throwable t = queue.poll();
+      if (t == null || !visited.add(t)) {
+        continue;
+      }
+      int code = 0;
+      if (t instanceof SMTPSendFailedException send) {
+        code = send.getReturnCode();
+      } else if (t instanceof SMTPAddressFailedException address) {
+        code = address.getReturnCode();
+      }
+      if (code >= 500 && code < 600) {
+        return true;
+      }
+      if (t.getCause() != null) {
+        queue.add(t.getCause());
+      }
+      if (t instanceof MessagingException messaging && messaging.getNextException() != null) {
+        queue.add(messaging.getNextException());
+      }
+    }
+    return false;
   }
 
   @Override

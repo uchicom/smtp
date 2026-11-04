@@ -28,8 +28,10 @@ public interface Mail {
    * @param boxSet メールボックスのセット
    * @param localHostName ローカルホスト名
    * @param senderHostName 送り元ホスト名
+   * @throws Exception コピーに失敗した場合(一部のメールボックスのみ失敗した場合も、全件試行後に送出する)
    */
-  public void copy(Set<MailBox> boxSet, String localHostName, String senderHostName);
+  public void copy(Set<MailBox> boxSet, String localHostName, String senderHostName)
+      throws Exception;
 
   /**
    * データを取得します.
