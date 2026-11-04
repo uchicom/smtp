@@ -35,6 +35,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
+import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
@@ -435,15 +436,14 @@ public class SmtpProcess implements ServerProcess {
                   new FileMail(
                       new File(
                           new File(parameter.getFile("dir"), "@rcpt"),
-                          helo.replaceAll(":", "_")
+                          // クライアント入力(HELO/MAIL FROM)はファイル名に使用しない
+                          senderAddress.replaceAll(":", "_")
                               + "_"
-                              + mailFrom
-                              + "~"
-                              + senderAddress.replaceAll(":", "_")
-                              + "_"
-                              + LocalDateTime.now().format(dateTimeFormatter) // 日付とuuid スレッド番号
+                              + LocalDateTime.now().format(dateTimeFormatter)
                               + "_"
                               + Thread.currentThread().threadId()
+                              + "_"
+                              + UUID.randomUUID()
                               + ".eml"));
             }
             writer = mail.getWriter();

@@ -211,6 +211,29 @@ public class SmtpProcessTest {
         });
   }
 
+  @Test
+  public void traversalHeloDoesNotEscapeRcptDir(@TempDir File dir) throws Exception {
+    File box = new File(dir, "user");
+    assertThat(box.mkdirs()).isTrue();
+    session(
+        new String[] {"-dir", dir.getAbsolutePath(), "-host", "localhost"},
+        (reader, ps) -> {
+          assertThat(reader.readLine()).startsWith("220");
+          assertThat(send(reader, ps, "EHLO ../../x")).startsWith("250");
+          assertThat(send(reader, ps, "MAIL FROM:<a@example.com>")).startsWith("250");
+          assertThat(send(reader, ps, "RCPT TO:<user@localhost>")).startsWith("250");
+          assertThat(send(reader, ps, "DATA")).startsWith("354");
+          ps.print("Subject: test\r\n\r\nbody\r\n");
+          ps.flush();
+          assertThat(send(reader, ps, ".")).startsWith("250");
+        });
+    // @rcpt の外(dir直下・親ディレクトリ)に .eml が作られていない
+    assertThat(dir.listFiles((d, name) -> name.endsWith(".eml"))).isEmpty();
+    assertThat(dir.getParentFile().listFiles((d, name) -> name.contains("example.com"))).isEmpty();
+    // 配送先には届いている
+    assertThat(box.listFiles()).hasSize(1);
+  }
+
   /** 認証済み状態にする. */
   private void authenticate(BufferedReader reader, PrintStream ps) throws Exception {
     assertThat(send(reader, ps, "AUTH LOGIN")).startsWith("334");
