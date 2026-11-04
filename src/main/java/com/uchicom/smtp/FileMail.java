@@ -43,7 +43,7 @@ public class FileMail implements Mail {
   @Override
   public Writer getWriter() throws Exception {
     return new BufferedWriter(
-        new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8));
+        new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.ISO_8859_1));
   }
 
   @Override

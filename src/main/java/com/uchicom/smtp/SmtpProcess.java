@@ -142,7 +142,9 @@ public class SmtpProcess implements ServerProcess {
     try {
       socket.setSoTimeout(
           parameter.getInt("soTimeout", Integer.parseInt(Constants.DEFAULT_SO_TIMEOUT)));
-      br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+      br =
+          new BufferedReader(
+              new InputStreamReader(socket.getInputStream(), StandardCharsets.ISO_8859_1));
       lineReader = new LineReader(br);
       ps = new PrintStream(socket.getOutputStream());
       acquired =
@@ -328,7 +330,9 @@ public class SmtpProcess implements ServerProcess {
             socket = startTls();
             socket.setSoTimeout(
                 parameter.getInt("soTimeout", Integer.parseInt(Constants.DEFAULT_SO_TIMEOUT)));
-            br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            br =
+                new BufferedReader(
+                    new InputStreamReader(socket.getInputStream(), StandardCharsets.ISO_8859_1));
             lineReader = new LineReader(br);
             ps = new PrintStream(socket.getOutputStream());
           } else {
