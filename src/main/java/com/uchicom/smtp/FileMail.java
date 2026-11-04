@@ -6,8 +6,10 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.io.UncheckedIOException;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -86,6 +88,10 @@ public class FileMail implements Mail {
 
   @Override
   public String getData() {
-    return null;
+    try {
+      return new String(Files.readAllBytes(file.toPath()), StandardCharsets.ISO_8859_1);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
   }
 }

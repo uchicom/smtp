@@ -242,24 +242,31 @@ public class SmtpProcess implements ServerProcess {
               } catch (Exception e) {
                 logger.log(Level.WARNING, "spam copy failed", e);
               }
-            } else if (bTransfer) {
-              logger.log(Level.INFO, "transferList:" + transferList);
-              try {
-                transfer();
-              } catch (Exception e) {
-                logger.log(Level.WARNING, "transfer failed", e);
-                failure = e;
-              }
             } else {
-              // メッセージコピー処理
-              try {
-                mail.copy(
-                    boxSet,
-                    socket.getLocalAddress().getHostName(),
-                    socket.getInetAddress().getHostName());
-              } catch (Exception e) {
-                logger.log(Level.WARNING, "copy failed", e);
-                failure = e;
+              // ローカル宛てと転送宛てが混在していても、それぞれ配送する
+              if (!boxSet.isEmpty()) {
+                try {
+                  mail.copy(
+                      boxSet,
+                      socket.getLocalAddress().getHostName(),
+                      socket.getInetAddress().getHostName());
+                } catch (Exception e) {
+                  logger.log(Level.WARNING, "copy failed", e);
+                  failure = e;
+                }
+              }
+              if (bTransfer) {
+                logger.log(Level.INFO, "transferList:" + transferList);
+                try {
+                  transfer();
+                } catch (Exception e) {
+                  logger.log(Level.WARNING, "transfer failed", e);
+                  if (failure == null) {
+                    failure = e;
+                  } else {
+                    failure.addSuppressed(e);
+                  }
+                }
               }
             }
             mail.delete();
@@ -375,10 +382,7 @@ public class SmtpProcess implements ServerProcess {
             String address = addresses[0] + "@" + addresses[1];
             logger.log(Level.INFO, "To email address:" + address);
             boolean local = addresses[1].equals(parameter.get("host"));
-            if (local && bTransfer || !local && !boxSet.isEmpty()) {
-              // ローカル宛てと転送宛ては同一メールに混在させない
-              SmtpUtil.recieveLine(ps, Constants.RECV_452_MIXED_RCPT);
-            } else if (local) {
+            if (local) {
               // 宛先チェック(今回のアドレスのみを対象にする)
               MailBox found = null;
               if (parameter.is("memory")) {
@@ -435,9 +439,7 @@ public class SmtpProcess implements ServerProcess {
           }
         } else if (SmtpUtil.isData(line)) {
           if (bRcptTo) {
-            if (bTransfer) {
-              mail = new MemoryMail();
-            } else if (parameter.is("memory")) {
+            if (parameter.is("memory") || bTransfer && boxSet.isEmpty()) {
               mail = new MemoryMail();
             } else {
               mail =
