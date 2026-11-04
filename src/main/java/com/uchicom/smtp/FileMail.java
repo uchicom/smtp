@@ -13,7 +13,6 @@ import java.nio.file.Files;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.mail.MessagingException;
 
 /**
  * ファイル形式のメールクラス.
@@ -69,16 +68,25 @@ public class FileMail implements Mail {
             mailBox.getMailAddress(),
             senderHostName,
             localHostName);
-        if (mailBox.hasWebhook()) {
-          mailBox.webhook(file);
-        }
-      } catch (MessagingException | IOException | InterruptedException e) {
+      } catch (IOException e) {
         logger.log(Level.WARNING, "copy failed:" + mailBox.getMailAddress(), e);
         if (failure == null) {
           failure = e;
         } else {
           failure.addSuppressed(e);
         }
+        continue;
+      }
+      // Webhookの失敗は配送の成否に影響させない
+      try {
+        if (mailBox.hasWebhook()) {
+          mailBox.webhook(file);
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger.log(Level.WARNING, "webhook interrupted:" + mailBox.getMailAddress(), e);
+      } catch (Exception e) {
+        logger.log(Level.WARNING, "webhook failed:" + mailBox.getMailAddress(), e);
       }
     }
     if (failure != null) {
