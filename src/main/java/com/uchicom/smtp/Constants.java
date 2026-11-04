@@ -126,9 +126,9 @@ public class Constants {
   /** HELPの正規表現(大文字小文字後続スペース) */
   public static Pattern REG_EXP_HELP = Pattern.compile("^[Hh][Ee][Ll][Pp] *$");
 
-  /** AUTH PLAINの正規表現(大文字小文字後続スペース) */
-  public static Pattern REG_EXP_AUTH_LOGIN =
-      Pattern.compile("^[Aa][Uu][Tt][Hh] +[Ll][Oo][Gg][Ii][Nn] *$");
+  /** AUTHの正規表現(機構名と、あれば初期応答) */
+  public static Pattern REG_EXP_AUTH =
+      Pattern.compile("^[Aa][Uu][Tt][Hh] +([^ ]+)(?: +([^ ]+))? *$");
 
   // 初期設定
   /** デフォルトメールボックスディレクトリ */

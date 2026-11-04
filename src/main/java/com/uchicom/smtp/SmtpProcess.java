@@ -4,7 +4,12 @@ package com.uchicom.smtp;
 import com.sun.mail.smtp.SMTPAddressFailedException;
 import com.sun.mail.smtp.SMTPSendFailedException;
 import com.uchicom.server.ServerProcess;
-import com.uchicom.smtp.type.AuthenticationStatus;
+import com.uchicom.smtp.auth.LoginMechanism;
+import com.uchicom.smtp.auth.PlainMechanism;
+import com.uchicom.smtp.auth.SaslAuthException;
+import com.uchicom.smtp.auth.SaslMechanism;
+import com.uchicom.smtp.auth.ScramAlgorithm;
+import com.uchicom.smtp.auth.ScramMechanism;
 import com.uchicom.util.Parameter;
 import java.io.BufferedReader;
 import java.io.File;
@@ -71,7 +76,6 @@ public class SmtpProcess implements ServerProcess {
   /** 外のメールサーバに転送する */
   private boolean bTransfer;
 
-  private AuthenticationStatus authStatus;
   private boolean bSpam;
 
   /** メッセージサイズが上限を超えた */
@@ -104,7 +108,14 @@ public class SmtpProcess implements ServerProcess {
   private String helo;
   private String mailFrom;
   private Mail mail;
+  private static final String MECHANISM_PLAIN = "PLAIN";
+
+  private static final String MECHANISM_LOGIN = "LOGIN";
+
   private String authName;
+
+  /** 実行中のSASL認証(AUTH実行中でなければnull) */
+  private SaslMechanism sasl;
 
   private Set<MailBox> boxSet = new HashSet<>();
 
@@ -170,50 +181,8 @@ public class SmtpProcess implements ServerProcess {
       // DATAの順で処理する
       // 認証状態、非認証状態で、判定できるコマンドを分ける、状態遷移もつける
       while (line != null) {
-        if (authStatus == AuthenticationStatus.USER
-            || authStatus == AuthenticationStatus.PASSWORD) {
-          switch (authStatus) {
-            case USER:
-              String name;
-              try {
-                name = new String(Base64.getDecoder().decode(line), StandardCharsets.UTF_8);
-              } catch (IllegalArgumentException e) {
-                SmtpUtil.recieveLine(ps, "501 Invalid base64 data");
-                authStatus = AuthenticationStatus.NOAUTH;
-                break;
-              }
-              File dir = SmtpUtil.resolveUserDir(parameter.getFile("dir"), name);
-              if (dir == null) {
-                SmtpUtil.recieveLine(ps, Constants.RECV_535);
-                authStatus = AuthenticationStatus.NOAUTH;
-              } else {
-                authStatus = AuthenticationStatus.PASSWORD;
-                authName = name;
-
-                SmtpUtil.recieveLine(ps, Constants.RECV_334, " UGFzc3dvcmQ6");
-              }
-              break;
-            case PASSWORD:
-              String pass;
-              try {
-                pass = new String(Base64.getDecoder().decode(line), StandardCharsets.UTF_8);
-              } catch (IllegalArgumentException e) {
-                SmtpUtil.recieveLine(ps, "501 Invalid base64 data");
-                authStatus = AuthenticationStatus.NOAUTH;
-                break;
-              }
-              if (SmtpUtil.verifyPassword(parameter.getFile("dir"), authName, pass)) {
-                SmtpUtil.recieveLine(ps, Constants.RECV_235);
-                bAuth = true;
-                authStatus = AuthenticationStatus.AUTH;
-              } else {
-                // ユーザー・パスワードファイルなし、パスワード不一致エラー
-                SmtpUtil.recieveLine(ps, Constants.RECV_535);
-                authStatus = AuthenticationStatus.NOAUTH;
-              }
-              break;
-            default:
-          }
+        if (sasl != null) {
+          authResponse(line, ps);
         } else if (bData) {
           if (!bContinuation && ".".equals(line) && bOverSize) {
             // サイズ超過のメッセージは破棄する
@@ -315,7 +284,7 @@ public class SmtpProcess implements ServerProcess {
               // STARTTLS完了までAUTHは広告しない
               SmtpUtil.recieveLine(ps, Constants.RECV_250, " STARTTLS");
             } else {
-              SmtpUtil.recieveLine(ps, Constants.RECV_250, " AUTH LOGIN"); // TODO CRAM-MD5も追加したい
+              SmtpUtil.recieveLine(ps, Constants.RECV_250, " AUTH ", authMechanisms());
             }
           } else {
 
@@ -345,12 +314,13 @@ public class SmtpProcess implements ServerProcess {
           } else {
             SmtpUtil.recieveLine(ps, "502", " Command not implemented");
           }
-        } else if (SmtpUtil.isAuthLogin(line) && parameter.is("transfer")) {
+        } else if (SmtpUtil.parseAuth(line) != null && parameter.is("transfer")) {
           if (!(socket instanceof SSLSocket) && hasKeyStore()) {
             SmtpUtil.recieveLine(ps, "530 Must issue a STARTTLS command first");
+          } else if (bAuth) {
+            SmtpUtil.recieveLine(ps, "503 Already authenticated");
           } else {
-            authStatus = AuthenticationStatus.USER;
-            SmtpUtil.recieveLine(ps, Constants.RECV_334, " VXNlcm5hbWU6");
+            startAuth(SmtpUtil.parseAuth(line), ps);
           }
         } else if (SmtpUtil.isRset(line)) {
           SmtpUtil.recieveLine(ps, Constants.RECV_250_OK);
@@ -847,6 +817,78 @@ public class SmtpProcess implements ServerProcess {
     sslSocket.startHandshake();
 
     return sslSocket;
+  }
+
+  /** EHLOで広告するSASL機構名(スペース区切り). 強いSCRAMを先に並べる. */
+  private static String authMechanisms() {
+    StringBuilder mechanisms = new StringBuilder();
+    for (ScramAlgorithm algorithm : ScramAlgorithm.values()) {
+      mechanisms.append(algorithm.getMechanismName()).append(' ');
+    }
+    return mechanisms.append(MECHANISM_PLAIN).append(' ').append(MECHANISM_LOGIN).toString();
+  }
+
+  /** AUTHコマンドで認証を開始する. 初期応答があればそのまま1回目の応答として処理する. */
+  private void startAuth(String[] args, PrintStream ps) {
+    sasl = newMechanism(args[0]);
+    if (sasl == null) {
+      SmtpUtil.recieveLine(ps, "504 Unrecognized authentication type");
+    } else if (args[1] == null) {
+      SmtpUtil.recieveLine(
+          ps, Constants.RECV_334, " ", Base64.getEncoder().encodeToString(sasl.initialChallenge()));
+    } else {
+      authResponse(args[1], ps);
+    }
+  }
+
+  /** 機構名からSASL機構を作る. 未対応の場合はnull. */
+  private SaslMechanism newMechanism(String name) {
+    File baseDir = parameter.getFile("dir");
+    if (MECHANISM_PLAIN.equalsIgnoreCase(name)) {
+      return new PlainMechanism((user, pass) -> SmtpUtil.verifyPassword(baseDir, user, pass));
+    }
+    if (MECHANISM_LOGIN.equalsIgnoreCase(name)) {
+      return new LoginMechanism((user, pass) -> SmtpUtil.verifyPassword(baseDir, user, pass));
+    }
+    ScramAlgorithm algorithm = ScramAlgorithm.find(name);
+    return algorithm == null
+        ? null
+        : new ScramMechanism(
+            algorithm, (user, alg) -> SmtpUtil.findScramCredential(baseDir, user, alg));
+  }
+
+  /** AUTH実行中のクライアント応答(base64)を処理する. */
+  private void authResponse(String line, PrintStream ps) {
+    SaslMechanism mechanism = sasl;
+    try {
+      if ("*".equals(line)) {
+        sasl = null;
+        SmtpUtil.recieveLine(ps, "501 Authentication cancelled");
+        return;
+      }
+      // 初期応答の"="は空の応答
+      byte[] response = "=".equals(line) ? new byte[0] : Base64.getDecoder().decode(line);
+      byte[] challenge = mechanism.step(response);
+      if (!mechanism.isComplete()) {
+        SmtpUtil.recieveLine(
+            ps, Constants.RECV_334, " ", Base64.getEncoder().encodeToString(challenge));
+        return;
+      }
+      sasl = null;
+      if (SmtpUtil.resolveUserDir(parameter.getFile("dir"), mechanism.getUser()) == null) {
+        SmtpUtil.recieveLine(ps, Constants.RECV_535);
+        return;
+      }
+      authName = mechanism.getUser();
+      bAuth = true;
+      SmtpUtil.recieveLine(ps, Constants.RECV_235);
+    } catch (IllegalArgumentException e) {
+      sasl = null;
+      SmtpUtil.recieveLine(ps, "501 Invalid base64 data");
+    } catch (SaslAuthException e) {
+      sasl = null;
+      SmtpUtil.recieveLine(ps, Constants.RECV_535);
+    }
   }
 
   boolean hasKeyStore() {

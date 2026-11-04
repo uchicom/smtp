@@ -1,6 +1,8 @@
 // (C) 2014 uchicom
 package com.uchicom.smtp;
 
+import com.uchicom.smtp.auth.ScramAlgorithm;
+import com.uchicom.smtp.auth.ScramCredential;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -12,8 +14,11 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.security.SecureRandom;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.Base64;
 import java.util.regex.Matcher;
 
 /**
@@ -22,6 +27,16 @@ import java.util.regex.Matcher;
  * @author uchicom: Shigeki Uchiyama
  */
 public class SmtpUtil {
+
+  /** SCRAMの反復回数 */
+  private static final int SCRAM_ITERATIONS = 4096;
+
+  /** SCRAMのソルト生成用のプロセス固有の秘密値 */
+  private static final byte[] SERVER_SECRET = new byte[32];
+
+  static {
+    new SecureRandom().nextBytes(SERVER_SECRET);
+  }
 
   private static DateTimeFormatter dateTimeFormatter = DateTimeFormatter.RFC_1123_DATE_TIME;
 
@@ -145,8 +160,18 @@ public class SmtpUtil {
     return Constants.REG_EXP_HELP.matcher(cmd).matches();
   }
 
-  public static boolean isAuthLogin(String cmd) {
-    return Constants.REG_EXP_AUTH_LOGIN.matcher(cmd).matches();
+  /**
+   * AUTHコマンドを解析する.
+   *
+   * @param cmd コマンド
+   * @return AUTHの場合は、機構名と初期応答(なければnull)の配列。AUTHでない場合はnull
+   */
+  public static String[] parseAuth(String cmd) {
+    Matcher matcher = Constants.REG_EXP_AUTH.matcher(cmd);
+    if (!matcher.matches()) {
+      return null;
+    }
+    return new String[] {matcher.group(1), matcher.group(2)};
   }
 
   /**
@@ -212,13 +237,32 @@ public class SmtpUtil {
    * @return 一致する場合はtrue
    */
   public static boolean verifyPassword(File baseDir, String name, String pass) {
-    File dir = resolveUserDir(baseDir, name);
-    if (dir == null || pass == null) {
+    if (pass == null) {
       return false;
+    }
+    String password = readPassword(baseDir, name);
+    if (password == null) {
+      return false;
+    }
+    return MessageDigest.isEqual(
+        pass.getBytes(StandardCharsets.UTF_8), password.getBytes(StandardCharsets.UTF_8));
+  }
+
+  /**
+   * パスワードファイルからパスワードを読み込む.
+   *
+   * @param baseDir ユーザーディレクトリの親
+   * @param name ユーザー名
+   * @return パスワード。ユーザーまたはパスワードファイルが存在しない場合はnull
+   */
+  public static String readPassword(File baseDir, String name) {
+    File dir = resolveUserDir(baseDir, name);
+    if (dir == null) {
+      return null;
     }
     File passwordFile = new File(dir, Constants.PASSWORD_FILE_NAME);
     if (!passwordFile.isFile()) {
-      return false;
+      return null;
     }
     try (BufferedReader reader =
         new BufferedReader(
@@ -227,14 +271,30 @@ public class SmtpUtil {
       while ("".equals(password)) {
         password = reader.readLine();
       }
-      if (password == null) {
-        return false;
-      }
-      return MessageDigest.isEqual(
-          pass.getBytes(StandardCharsets.UTF_8), password.getBytes(StandardCharsets.UTF_8));
+      return password;
     } catch (IOException e) {
-      return false;
+      return null;
     }
+  }
+
+  /**
+   * SCRAMの資格情報をパスワードから導出する. 存在しないユーザーにも、実在するユーザーと区別できない導出値を返す.
+   *
+   * @param baseDir ユーザーディレクトリの親
+   * @param name ユーザー名
+   * @param algorithm SCRAMのアルゴリズム
+   * @return 資格情報
+   */
+  public static ScramCredential findScramCredential(
+      File baseDir, String name, ScramAlgorithm algorithm) {
+    byte[] salt =
+        Arrays.copyOf(algorithm.hmac(SERVER_SECRET, name.getBytes(StandardCharsets.UTF_8)), 16);
+    String password = readPassword(baseDir, name);
+    if (password == null) {
+      // 存在しないユーザー、パスワードファイルなしの場合は、誰にも一致しない擬似パスワードを使う
+      password = Base64.getEncoder().encodeToString(algorithm.hmac(SERVER_SECRET, salt));
+    }
+    return algorithm.derive(password, salt, SCRAM_ITERATIONS);
   }
 
   /**

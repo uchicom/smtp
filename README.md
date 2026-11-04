@@ -34,6 +34,20 @@ mvn exec:java "-Dexec.mainClass=com.uchicom.smtp.TestMain"
 
 アドレス構文が不正な`MAIL FROM` / `RCPT TO`は501を返します。バウンスメール用のヌル送信元(`MAIL FROM:<>`)は受け付けます(`RCPT TO:<>`は501)。
 
+## SMTP認証 (AUTH)
+`-transfer true` のとき、外部宛ての中継に認証が必要になる。EHLO で次の SASL 機構を広告する。
+
+- SCRAM-SHA-512 / SCRAM-SHA-384 / SCRAM-SHA-256 / SCRAM-SHA-224 / SCRAM-SHA-1 (RFC 5802, 7677)
+- PLAIN / LOGIN
+
+**対応しない**
+- `-PLUS` 系(チャネルバインディング): Java の標準 API では `tls-unique` と `tls-exporter`(RFC 9266)に必要な値を取得できないため。
+- SCRAM-SHA3-512: 仕様がドラフトのため。
+
+キーストアを指定した場合は、STARTTLS 完了までは AUTH を広告せず、受け付けない。
+
+パスワードファイル(`.smtp`)は**平文のまま保存**する(SCRAM の資格情報をサーバ側で導出するため)。ファイルは実行ユーザー以外が読めないようにする。
+
 ## keytool
 ```
 keytool -genkey -alias smtp -keyalg RSA -keystore keystore -storepass changeit

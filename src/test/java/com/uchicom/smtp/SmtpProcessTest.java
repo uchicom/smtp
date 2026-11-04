@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.sun.mail.smtp.SMTPSendFailedException;
+import com.uchicom.smtp.auth.ScramAlgorithm;
+import com.uchicom.smtp.auth.ScramCredential;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -445,5 +447,118 @@ public class SmtpProcessTest {
     } finally {
       ConnectionLimiter.singleton().release("127.0.0.1");
     }
+  }
+
+  @Test
+  public void ehloAdvertisesSaslMechanisms(@TempDir File dir) throws Exception {
+    session(
+        transferArgs(dir),
+        (reader, ps) -> {
+          assertThat(reader.readLine()).startsWith("220");
+          assertThat(send(reader, ps, "EHLO test"))
+              .endsWith(
+                  "250 AUTH SCRAM-SHA-512 SCRAM-SHA-384 SCRAM-SHA-256 SCRAM-SHA-224"
+                      + " SCRAM-SHA-1 PLAIN LOGIN");
+        });
+  }
+
+  @Test
+  public void authPlain(@TempDir File dir) throws Exception {
+    session(
+        transferArgs(dir),
+        (reader, ps) -> {
+          assertThat(reader.readLine()).startsWith("220");
+          assertThat(send(reader, ps, "AUTH PLAIN " + b64("\0auth\0wrong"))).startsWith("535");
+          // 初期応答なし
+          assertThat(send(reader, ps, "AUTH PLAIN")).isEqualTo("334 ");
+          assertThat(send(reader, ps, b64("\0auth\0secret"))).startsWith("235");
+          assertThat(send(reader, ps, "AUTH PLAIN " + b64("\0auth\0secret"))).startsWith("503");
+        });
+  }
+
+  @Test
+  public void authErrors(@TempDir File dir) throws Exception {
+    session(
+        transferArgs(dir),
+        (reader, ps) -> {
+          assertThat(reader.readLine()).startsWith("220");
+          assertThat(send(reader, ps, "AUTH UNKNOWN")).startsWith("504");
+          // PLUS系は未対応
+          assertThat(send(reader, ps, "AUTH SCRAM-SHA-256-PLUS")).startsWith("504");
+          assertThat(send(reader, ps, "AUTH PLAIN !!!")).startsWith("501");
+          // 中断
+          assertThat(send(reader, ps, "AUTH LOGIN")).startsWith("334");
+          assertThat(send(reader, ps, "*")).startsWith("501");
+          // 存在しないユーザー
+          assertThat(send(reader, ps, "AUTH LOGIN")).startsWith("334");
+          assertThat(send(reader, ps, b64("nobody"))).startsWith("334");
+          assertThat(send(reader, ps, b64("secret"))).startsWith("535");
+          // 中断後は通常のコマンドに戻る
+          assertThat(send(reader, ps, "NOOP")).startsWith("250");
+        });
+  }
+
+  @Test
+  public void authScram(@TempDir File dir) throws Exception {
+    String[] args = transferArgs(dir);
+    for (ScramAlgorithm algorithm : ScramAlgorithm.values()) {
+      session(
+          args,
+          (reader, ps) -> {
+            assertThat(reader.readLine()).startsWith("220");
+            assertThat(scram(reader, ps, algorithm, "secret")).startsWith("235");
+          });
+      session(
+          args,
+          (reader, ps) -> {
+            assertThat(reader.readLine()).startsWith("220");
+            assertThat(scram(reader, ps, algorithm, "wrong")).startsWith("535");
+          });
+    }
+  }
+
+  /** SCRAMのクライアント側. 最後の応答を返す. */
+  private static String scram(
+      BufferedReader reader, PrintStream ps, ScramAlgorithm algorithm, String password)
+      throws Exception {
+    String clientFirstBare = "n=auth,r=clientnonce";
+    String reply = send(reader, ps, "AUTH " + algorithm.getMechanismName());
+    assertThat(reply).isEqualTo("334 ");
+    reply = send(reader, ps, b64("n,," + clientFirstBare));
+    assertThat(reply).startsWith("334 ");
+    String serverFirst = unb64(reply.substring(4));
+    String[] attrs = serverFirst.split(",");
+    String nonce = attrs[0].substring(2);
+    byte[] salt = java.util.Base64.getDecoder().decode(attrs[1].substring(2));
+    int iterations = Integer.parseInt(attrs[2].substring(2));
+    ScramCredential credential = algorithm.derive(password, salt, iterations);
+    byte[] saltedPassword =
+        algorithm.hi(password.getBytes(StandardCharsets.UTF_8), salt, iterations);
+    byte[] clientKey =
+        algorithm.hmac(saltedPassword, "Client Key".getBytes(StandardCharsets.US_ASCII));
+    String withoutProof = "c=" + b64("n,,") + ",r=" + nonce;
+    byte[] authMessage =
+        (clientFirstBare + "," + serverFirst + "," + withoutProof).getBytes(StandardCharsets.UTF_8);
+    byte[] signature = algorithm.hmac(credential.storedKey(), authMessage);
+    byte[] proof = new byte[clientKey.length];
+    for (int i = 0; i < proof.length; i++) {
+      proof[i] = (byte) (clientKey[i] ^ signature[i]);
+    }
+    reply =
+        send(
+            reader,
+            ps,
+            b64(withoutProof + ",p=" + java.util.Base64.getEncoder().encodeToString(proof)));
+    if (!reply.startsWith("334 ")) {
+      return reply;
+    }
+    byte[] expected = algorithm.hmac(credential.serverKey(), authMessage);
+    assertThat(unb64(reply.substring(4)))
+        .isEqualTo("v=" + java.util.Base64.getEncoder().encodeToString(expected));
+    return send(reader, ps, "");
+  }
+
+  private static String unb64(String s) {
+    return new String(java.util.Base64.getDecoder().decode(s), StandardCharsets.UTF_8);
   }
 }
