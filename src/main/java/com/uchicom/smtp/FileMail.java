@@ -9,6 +9,8 @@ import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.mail.MessagingException;
 
 /**
@@ -17,6 +19,8 @@ import javax.mail.MessagingException;
  * @author uchicom: Shigeki Uchiyama
  */
 public class FileMail implements Mail {
+
+  private static final Logger logger = Logger.getLogger(FileMail.class.getCanonicalName());
 
   /** メールファイル */
   private File file;
@@ -52,7 +56,9 @@ public class FileMail implements Mail {
   }
 
   @Override
-  public void copy(Set<MailBox> boxSet, String localHostName, String senderHostName) {
+  public void copy(Set<MailBox> boxSet, String localHostName, String senderHostName)
+      throws Exception {
+    Exception failure = null;
     for (MailBox mailBox : boxSet) {
       try {
         SmtpUtil.copyFile(
@@ -64,19 +70,22 @@ public class FileMail implements Mail {
         if (mailBox.hasWebhook()) {
           mailBox.webhook(file);
         }
-      } catch (MessagingException e) {
-        e.printStackTrace();
-      } catch (IOException e) {
-        e.printStackTrace();
-      } catch (InterruptedException e) {
-        e.printStackTrace();
+      } catch (MessagingException | IOException | InterruptedException e) {
+        logger.log(Level.WARNING, "copy failed:" + mailBox.getMailAddress(), e);
+        if (failure == null) {
+          failure = e;
+        } else {
+          failure.addSuppressed(e);
+        }
       }
+    }
+    if (failure != null) {
+      throw failure;
     }
   }
 
   @Override
   public String getData() {
-    // TODO 自動生成されたメソッド・スタブ
     return null;
   }
 }

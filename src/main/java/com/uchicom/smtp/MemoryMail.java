@@ -4,6 +4,7 @@ package com.uchicom.smtp;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.io.UncheckedIOException;
 import java.io.Writer;
 import java.util.Set;
 
@@ -36,8 +37,8 @@ public class MemoryMail implements Mail {
         try {
           mail.baos.write(this.baos.toByteArray());
         } catch (IOException e) {
-          // TODO 自動生成された catch ブロック
-          e.printStackTrace();
+          // ByteArrayOutputStreamへの書き込みでは発生しない
+          throw new UncheckedIOException(e);
         }
         mailBox.getMailList().add(mail);
       }

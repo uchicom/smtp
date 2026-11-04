@@ -136,8 +136,7 @@ public class MailSender {
       rec = reader.readLine();
       logger.info("t[" + rec + "]");
     } catch (Exception e) {
-      e.printStackTrace();
-      logger.warning(e.getMessage());
+      logger.log(Level.WARNING, e.getMessage(), e);
       throw e;
     }
     logger.info("smtp host:" + host);
@@ -199,8 +198,7 @@ public class MailSender {
         logger.info("t[" + rec + "]");
         break;
       } catch (Exception e) {
-        e.printStackTrace();
-        logger.warning(e.getMessage());
+        logger.log(Level.WARNING, e.getMessage(), e);
         exception = e;
       }
       logger.info("mx!:" + host);

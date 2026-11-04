@@ -57,6 +57,12 @@ public class Constants {
   /** 返却メッセージ(421(接続数超過)) */
   public static String RECV_421_BUSY = "421 Too many connections, try again later";
 
+  /** 返却メッセージ(451(配送失敗・一時的)) */
+  public static String RECV_451 = "451 Requested action aborted: local error in processing";
+
+  /** 返却メッセージ(554(配送失敗・恒久的)) */
+  public static String RECV_554 = "554 Transaction failed";
+
   /** 返却メッセージ(354(中間応答)) */
   public static String RECV_354 = "354 Start mail input; end with \\r\\n.\\r\\n";
 
