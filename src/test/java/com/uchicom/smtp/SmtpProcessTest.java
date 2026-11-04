@@ -124,6 +124,24 @@ public class SmtpProcessTest {
         });
   }
 
+  /** サイズは文字数ではなくバイト数で集計されること. */
+  @Test
+  public void messageTooLargeByBytes() throws Exception {
+    session(
+        new String[] {"-memory", "user", "-host", "localhost", "-maxSize", "20"},
+        (reader, ps) -> {
+          assertThat(reader.readLine()).startsWith("220");
+          assertThat(send(reader, ps, "HELO test")).startsWith("250");
+          assertThat(send(reader, ps, "MAIL FROM:<a@example.com>")).startsWith("250");
+          assertThat(send(reader, ps, "RCPT TO:<user@localhost>")).startsWith("250");
+          assertThat(send(reader, ps, "DATA")).startsWith("354");
+          // 5文字(15バイト)×2行=34バイト。文字数集計では14となり超過しない
+          ps.write("あああああ\r\nあああああ\r\n".getBytes(StandardCharsets.UTF_8));
+          ps.flush();
+          assertThat(send(reader, ps, ".")).startsWith("552");
+        });
+  }
+
   @Test
   public void ehloAdvertisesSize() throws Exception {
     session(

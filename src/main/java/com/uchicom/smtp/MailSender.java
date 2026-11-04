@@ -382,7 +382,8 @@ public class MailSender {
       Session session = Session.getInstance(props);
 
       MimeMessage message =
-          new MimeMessage(session, new ByteArrayInputStream(data.getBytes(StandardCharsets.UTF_8)));
+          new MimeMessage(
+              session, new ByteArrayInputStream(data.getBytes(StandardCharsets.ISO_8859_1)));
 
       if (dkimPrivateKeyFile != null) {
         addDKIMHeader(message, fromHost, dkimPrivateKeyFile, selector);

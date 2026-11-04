@@ -5,6 +5,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.security.KeyFactory;
 import java.security.MessageDigest;
@@ -86,7 +87,7 @@ public class DkimBuilder {
 
   String createBh(String text) throws NoSuchAlgorithmException {
     MessageDigest md = MessageDigest.getInstance("SHA-256");
-    md.update(text.getBytes());
+    md.update(text.getBytes(StandardCharsets.ISO_8859_1));
     return Base64.getEncoder().encodeToString(md.digest());
   }
 
@@ -119,7 +120,8 @@ public class DkimBuilder {
 
   String normalizeBody() throws IOException, MessagingException {
     try (BufferedReader br =
-        new BufferedReader(new InputStreamReader(message.getRawInputStream()))) {
+        new BufferedReader(
+            new InputStreamReader(message.getRawInputStream(), StandardCharsets.ISO_8859_1))) {
       StringBuilder builder = new StringBuilder(1024);
       List<String> lineList =
           br.lines()
