@@ -37,6 +37,7 @@ import java.util.Base64;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
@@ -105,7 +106,6 @@ public class SmtpProcess implements ServerProcess {
   private boolean bContinuation;
 
   private String senderAddress;
-  private String helo;
   private String mailFrom;
   private Mail mail;
   private static final String MECHANISM_PLAIN = "PLAIN";
@@ -120,7 +120,7 @@ public class SmtpProcess implements ServerProcess {
   private Set<MailBox> boxSet = new HashSet<>();
 
   /** 転送アドレス一覧 */
-  private List<String> transferList = new ArrayList<>();
+  private Set<String> transferList = new LinkedHashSet<>();
 
   private long startTime = System.currentTimeMillis();
 
@@ -274,8 +274,6 @@ public class SmtpProcess implements ServerProcess {
           }
         } else if ((SmtpUtil.isEhlo(line) || SmtpUtil.isHelo(line))) {
           bHelo = true;
-          String[] lines = line.split(" +");
-          helo = lines[1];
           if (parameter.is("transfer")) {
             SmtpUtil.recieveLine(
                 ps, Constants.RECV_250, "-", parameter.get("host"), " Hello ", senderAddress);
@@ -399,8 +397,10 @@ public class SmtpProcess implements ServerProcess {
 
               SmtpUtil.recieveLine(ps, Constants.RECV_250_OK);
               bTransfer = true;
-              transferList.add(address);
-              rcptCount++;
+              // 同一アドレスの重複指定は受理するが、二重送信と宛先数の加算はしない
+              if (transferList.add(address)) {
+                rcptCount++;
+              }
               bRcptTo = true;
             } else {
               // エラーホストが違う
