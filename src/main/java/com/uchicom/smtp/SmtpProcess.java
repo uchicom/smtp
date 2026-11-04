@@ -379,11 +379,12 @@ public class SmtpProcess implements ServerProcess {
               // ローカル宛てと転送宛ては同一メールに混在させない
               SmtpUtil.recieveLine(ps, Constants.RECV_452_MIXED_RCPT);
             } else if (local) {
-              // 宛先チェック
+              // 宛先チェック(今回のアドレスのみを対象にする)
+              MailBox found = null;
               if (parameter.is("memory")) {
                 for (String user : Context.singleton().getUsers()) {
                   if (addresses[0].equals(user)) {
-                    boxSet.add(new MailBox(address, Context.singleton().getMailList(user)));
+                    found = new MailBox(address, Context.singleton().getMailList(user));
                     break;
                   }
                 }
@@ -393,21 +394,24 @@ public class SmtpProcess implements ServerProcess {
                   if (box.isDirectory()) {
                     if (addresses[0].equals(box.getName())) {
                       if (mailFromCheck(box)) {
-                        boxSet.add(
+                        found =
                             MailBox.builder()
                                 .mailAddress(address)
                                 .dir(box)
                                 .webhook(parameter.is("webhook"))
-                                .build());
+                                .build();
                       }
                       break;
                     }
                   }
                 }
               }
-              if (boxSet.size() > 0) {
+              if (found != null) {
                 SmtpUtil.recieveLine(ps, Constants.RECV_250_OK);
-                rcptCount++;
+                // 同一アドレスの重複指定は受理するが、宛先数には数えない
+                if (boxSet.add(found)) {
+                  rcptCount++;
+                }
                 bRcptTo = true;
               } else {
                 // エラーユーザー存在しない

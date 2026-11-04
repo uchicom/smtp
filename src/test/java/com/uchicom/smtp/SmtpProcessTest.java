@@ -191,6 +191,33 @@ public class SmtpProcessTest {
   }
 
   @Test
+  public void unknownRecipientAfterValidIsRejected() throws Exception {
+    session(
+        new String[] {"-memory", "user", "-host", "localhost"},
+        (reader, ps) -> {
+          assertThat(reader.readLine()).startsWith("220");
+          assertThat(send(reader, ps, "HELO test")).startsWith("250");
+          assertThat(send(reader, ps, "MAIL FROM:<a@example.com>")).startsWith("250");
+          assertThat(send(reader, ps, "RCPT TO:<user@localhost>")).startsWith("250");
+          assertThat(send(reader, ps, "RCPT TO:<nobody@localhost>")).startsWith("550");
+        });
+  }
+
+  @Test
+  public void duplicateRecipientDoesNotConsumeRcptCount() throws Exception {
+    session(
+        new String[] {"-memory", "user", "-host", "localhost", "-maxRcpt", "2"},
+        (reader, ps) -> {
+          assertThat(reader.readLine()).startsWith("220");
+          assertThat(send(reader, ps, "HELO test")).startsWith("250");
+          assertThat(send(reader, ps, "MAIL FROM:<a@example.com>")).startsWith("250");
+          assertThat(send(reader, ps, "RCPT TO:<user@localhost>")).startsWith("250");
+          assertThat(send(reader, ps, "RCPT TO:<user@localhost>")).startsWith("250");
+          assertThat(send(reader, ps, "RCPT TO:<nobody@localhost>")).startsWith("550");
+        });
+  }
+
+  @Test
   public void longBodyLineIsFolded() throws Exception {
     session(
         new String[] {"-memory", "user", "-host", "localhost", "-maxLine", "5"},
