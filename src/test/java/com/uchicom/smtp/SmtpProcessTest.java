@@ -43,7 +43,9 @@ public class SmtpProcessTest {
       thread.start();
       try (Socket client = new Socket(server.getInetAddress(), server.getLocalPort())) {
         client.setSoTimeout(5000);
-        var reader = new BufferedReader(new InputStreamReader(client.getInputStream(), StandardCharsets.UTF_8));
+        var reader =
+            new BufferedReader(
+                new InputStreamReader(client.getInputStream(), StandardCharsets.UTF_8));
         var ps = new PrintStream(client.getOutputStream());
         script.run(reader, ps);
       }

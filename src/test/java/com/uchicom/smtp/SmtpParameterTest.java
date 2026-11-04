@@ -16,8 +16,8 @@ public class SmtpParameterTest {
 
     assertThat(parameter.is("transfer")).isFalse();
     assertThat(parameter.get("dkimSelector")).isEqualTo("dkim");
-    assertThat(parameter.getInt("maxLine")).isEqualTo(1000);
-    assertThat(parameter.getInt("maxSize")).isEqualTo(10485760);
+    assertThat(parameter.getInt("maxLine")).isEqualTo(998);
+    assertThat(parameter.getInt("maxSize")).isEqualTo(35882577);
     assertThat(parameter.getInt("soTimeout")).isEqualTo(300000);
     assertThat(parameter.getInt("maxConn")).isEqualTo(100);
     assertThat(parameter.getInt("maxConnPerIp")).isEqualTo(10);
