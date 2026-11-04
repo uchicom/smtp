@@ -16,6 +16,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import java.util.logging.Logger;
@@ -343,6 +344,27 @@ public class SmtpProcessTest {
           assertThat(send(reader, ps, ".")).startsWith("250");
         });
     assertThat(new File(dir, "user").listFiles()).hasSize(1);
+  }
+
+  @Test
+  public void duplicateTransferRecipientDoesNotConsumeRcptCount(@TempDir File dir)
+      throws Exception {
+    String[] base = transferArgs(dir);
+    String[] args = Arrays.copyOf(base, base.length + 2);
+    args[base.length] = "-maxRcpt";
+    args[base.length + 1] = "2";
+    session(
+        args,
+        (reader, ps) -> {
+          assertThat(reader.readLine()).startsWith("220");
+          assertThat(send(reader, ps, "EHLO test")).startsWith("250");
+          authenticate(reader, ps);
+          assertThat(send(reader, ps, "MAIL FROM:<a@example.com>")).startsWith("250");
+          assertThat(send(reader, ps, "RCPT TO:<x@remote.example>")).startsWith("250");
+          assertThat(send(reader, ps, "RCPT TO:<x@remote.example>")).startsWith("250");
+          // 重複は宛先数に数えないため、2件目の別宛先も受理される
+          assertThat(send(reader, ps, "RCPT TO:<y@remote.example>")).startsWith("250");
+        });
   }
 
   @Test
