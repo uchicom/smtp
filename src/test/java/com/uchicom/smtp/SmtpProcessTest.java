@@ -252,6 +252,28 @@ public class SmtpProcessTest {
     assertThat(box.listFiles()).hasSize(1);
   }
 
+  @Test
+  public void disconnectDuringDataDoesNotDeliver(@TempDir File dir) throws Exception {
+    File box = new File(dir, "user");
+    assertThat(box.mkdirs()).isTrue();
+    session(
+        new String[] {"-dir", dir.getAbsolutePath(), "-host", "localhost"},
+        (reader, ps) -> {
+          assertThat(reader.readLine()).startsWith("220");
+          assertThat(send(reader, ps, "HELO test")).startsWith("250");
+          assertThat(send(reader, ps, "MAIL FROM:<a@example.com>")).startsWith("250");
+          assertThat(send(reader, ps, "RCPT TO:<user@localhost>")).startsWith("250");
+          assertThat(send(reader, ps, "DATA")).startsWith("354");
+          // 終端の.を送らずに切断する
+          ps.print("Subject: test\r\n\r\nbody\r\n");
+          ps.flush();
+        });
+    // 書きかけのメールは配送されず、@rcptにも残らない
+    assertThat(box.listFiles()).isEmpty();
+    File rcpt = new File(dir, "@rcpt");
+    assertThat(rcpt.list()).isNullOrEmpty();
+  }
+
   /** 認証済み状態にする. */
   private void authenticate(BufferedReader reader, PrintStream ps) throws Exception {
     assertThat(send(reader, ps, "AUTH LOGIN")).startsWith("334");

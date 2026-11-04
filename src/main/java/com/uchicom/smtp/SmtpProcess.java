@@ -497,25 +497,17 @@ public class SmtpProcess implements ServerProcess {
       if (ps != null) {
         ps.close();
       }
-      if (mail != null) {
-        // メッセージコピー処理
-        try {
-          mail.copy(
-              boxSet,
-              socket.getLocalAddress().getHostName(),
-              socket.getInetAddress().getHostName());
-          mail.delete();
-        } catch (Exception e) {
-          logger.log(Level.WARNING, e.getMessage(), e);
-        }
-        mail = null;
-      }
       if (writer != null) {
         try {
           writer.close();
         } catch (IOException e) {
           logger.log(Level.WARNING, e.getMessage(), e);
         }
+      }
+      if (mail != null) {
+        // DATA未完了(終端の.未受信)のメールは配送せず破棄する
+        mail.delete();
+        mail = null;
       }
       if (socket != null) {
         try {
