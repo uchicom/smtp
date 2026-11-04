@@ -211,6 +211,66 @@ public class SmtpProcessTest {
         });
   }
 
+  /** 認証済み状態にする. */
+  private void authenticate(BufferedReader reader, PrintStream ps) throws Exception {
+    assertThat(send(reader, ps, "AUTH LOGIN")).startsWith("334");
+    assertThat(send(reader, ps, b64("auth"))).startsWith("334");
+    assertThat(send(reader, ps, b64("secret"))).startsWith("235");
+  }
+
+  private static String b64(String s) {
+    return java.util.Base64.getEncoder().encodeToString(s.getBytes(StandardCharsets.UTF_8));
+  }
+
+  private String[] transferArgs(File dir) throws Exception {
+    File auth = new File(dir, "auth");
+    assertThat(auth.mkdirs()).isTrue();
+    java.nio.file.Files.writeString(
+        new File(auth, Constants.PASSWORD_FILE_NAME).toPath(), "secret");
+    assertThat(new File(dir, "user").mkdirs()).isTrue();
+    return new String[] {"-dir", dir.getAbsolutePath(), "-host", "localhost", "-transfer", "true"};
+  }
+
+  @Test
+  public void rsetClearsTransferState(@TempDir File dir) throws Exception {
+    session(
+        transferArgs(dir),
+        (reader, ps) -> {
+          assertThat(reader.readLine()).startsWith("220");
+          assertThat(send(reader, ps, "EHLO test")).startsWith("250");
+          authenticate(reader, ps);
+          assertThat(send(reader, ps, "MAIL FROM:<a@example.com>")).startsWith("250");
+          assertThat(send(reader, ps, "RCPT TO:<x@remote.example>")).startsWith("250");
+          assertThat(send(reader, ps, "RSET")).startsWith("250");
+          // RSET後はローカル宛てが転送扱いにならず、ローカル配送される
+          assertThat(send(reader, ps, "MAIL FROM:<a@example.com>")).startsWith("250");
+          assertThat(send(reader, ps, "RCPT TO:<user@localhost>")).startsWith("250");
+          assertThat(send(reader, ps, "DATA")).startsWith("354");
+          ps.print("Subject: test\r\n\r\nbody\r\n");
+          ps.flush();
+          assertThat(send(reader, ps, ".")).startsWith("250");
+        });
+    assertThat(new File(dir, "user").listFiles()).hasSize(1);
+  }
+
+  @Test
+  public void mixedRecipientsAreRejected(@TempDir File dir) throws Exception {
+    session(
+        transferArgs(dir),
+        (reader, ps) -> {
+          assertThat(reader.readLine()).startsWith("220");
+          assertThat(send(reader, ps, "EHLO test")).startsWith("250");
+          authenticate(reader, ps);
+          assertThat(send(reader, ps, "MAIL FROM:<a@example.com>")).startsWith("250");
+          assertThat(send(reader, ps, "RCPT TO:<user@localhost>")).startsWith("250");
+          assertThat(send(reader, ps, "RCPT TO:<x@remote.example>")).startsWith("452");
+          assertThat(send(reader, ps, "RSET")).startsWith("250");
+          assertThat(send(reader, ps, "MAIL FROM:<a@example.com>")).startsWith("250");
+          assertThat(send(reader, ps, "RCPT TO:<x@remote.example>")).startsWith("250");
+          assertThat(send(reader, ps, "RCPT TO:<user@localhost>")).startsWith("452");
+        });
+  }
+
   private SmtpProcess process() {
     return new SmtpProcess(new SmtpParameter(new String[0]), Logger.getAnonymousLogger(), null);
   }
