@@ -42,6 +42,21 @@ public class Constants {
   /** 返却メッセージ(550(失敗応答)) */
   public static String RECV_550 = "550 ";
 
+  /** 返却メッセージ(501(アドレス構文エラー)) */
+  public static String RECV_501_ADDRESS = "501 Syntax error in address";
+
+  /** 返却メッセージ(500(行長超過)) */
+  public static String RECV_500_LINE_TOO_LONG = "500 Line too long";
+
+  /** 返却メッセージ(452(宛先数超過)) */
+  public static String RECV_452_TOO_MANY_RCPT = "452 Too many recipients";
+
+  /** 返却メッセージ(552(サイズ超過)) */
+  public static String RECV_552 = "552 Message size exceeds fixed maximum message size";
+
+  /** 返却メッセージ(421(接続数超過)) */
+  public static String RECV_421_BUSY = "421 Too many connections, try again later";
+
   /** 返却メッセージ(354(中間応答)) */
   public static String RECV_354 = "354 Start mail input; end with \\r\\n.\\r\\n";
 
@@ -63,10 +78,26 @@ public class Constants {
 
   /** MAIL FROM:アドレスの正規表現(大文字小文字後続スペース) */
   public static Pattern REG_EXP_MAIL_FROM =
-      Pattern.compile("^[Mm][Aa][Ii][Ll] [Ff][Rr][Oo][Mm]:.+@.+ *$");
+      Pattern.compile("^[Mm][Aa][Ii][Ll] [Ff][Rr][Oo][Mm]:.*$");
 
   /** RCPT TO:アドレスの正規表現(大文字小文字後続スペース) */
-  public static Pattern REG_EXP_RCPT_TO = Pattern.compile("^[Rr][Cc][Pp][Tt] [Tt][Oo]:.+@.+ *$");
+  public static Pattern REG_EXP_RCPT_TO = Pattern.compile("^[Rr][Cc][Pp][Tt] [Tt][Oo]:.*$");
+
+  /** コマンドのアドレス部(&lt;local@domain&gt; 後続のESMTPパラメータ可)の正規表現 */
+  public static Pattern REG_EXP_ADDRESS =
+      Pattern.compile("^<?([^\\s<>@/\\\\:\"]+)@([A-Za-z0-9.-]+)>?(?:\\s+\\S.*)?$");
+
+  /** ヌル逆方向パス(&lt;&gt;、バウンスメール用)の正規表現 */
+  public static Pattern REG_EXP_NULL_PATH = Pattern.compile("^<>(?:\\s+\\S.*)?$");
+
+  /** MAIL FROMのSIZEパラメータの正規表現 */
+  public static Pattern REG_EXP_SIZE_PARAM = Pattern.compile("(?i)\\sSIZE=(\\d+)(?:\\s|$)");
+
+  /** ローカル部の最大長(RFC 5321) */
+  public static int MAX_LOCAL_PART_LENGTH = 64;
+
+  /** アドレスの最大長(RFC 5321) */
+  public static int MAX_ADDRESS_LENGTH = 254;
 
   /** DATAの正規表現(大文字小文字後続スペース) */
   public static Pattern REG_EXP_DATA = Pattern.compile("^[Dd][Aa][Tt][Aa] *$");
@@ -105,6 +136,27 @@ public class Constants {
 
   /** デフォルトスレッドプール数 */
   public static String DEFAULT_POOL = "10";
+
+  /** デフォルト本文行長上限(CRLFを除く文字数, RFC 5321は1000オクテット) */
+  public static String DEFAULT_MAX_LINE = "998";
+
+  /** デフォルトコマンド行長上限(CRLFを除く文字数, RFC 5321は512オクテット) */
+  public static String DEFAULT_MAX_COMMAND_LINE = "510";
+
+  /** デフォルト1通あたりの宛先数上限(RFC 5321の最低値, Gmailと同じ) */
+  public static String DEFAULT_MAX_RCPT = "100";
+
+  /** デフォルトメッセージサイズ上限(バイト, Gmailの受信上限に合わせる) */
+  public static String DEFAULT_MAX_SIZE = "35882577";
+
+  /** デフォルトソケットタイムアウト(ミリ秒, 5分) */
+  public static String DEFAULT_SO_TIMEOUT = "300000";
+
+  /** デフォルト同時接続数上限 */
+  public static String DEFAULT_MAX_CONN = "100";
+
+  /** デフォルトIPごとの同時接続数上限 */
+  public static String DEFAULT_MAX_CONN_PER_IP = "10";
 
   /** デフォルト送信フラグ */
   public static String DEFAULT_TRANSFER = "false";

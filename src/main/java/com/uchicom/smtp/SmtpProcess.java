@@ -68,6 +68,32 @@ public class SmtpProcess implements ServerProcess {
   private AuthenticationStatus authStatus;
   private boolean bSpam;
 
+  /** メッセージサイズが上限を超えた */
+  private boolean bOverSize;
+
+  /** 受信済みのメッセージサイズ(バイト) */
+  private long dataSize;
+
+  /** 本文行長上限(CRLFを除く文字数) */
+  private int maxLine;
+
+  /** コマンド行長上限(CRLFを除く文字数) */
+  private int maxCommandLine;
+
+  /** 1通あたりの宛先数上限 */
+  private int maxRcpt;
+
+  /** メッセージサイズ上限(バイト) */
+  private long maxSize;
+
+  /** 受け付けた宛先数 */
+  private int rcptCount;
+
+  private LineReader lineReader;
+
+  /** 直前に読んだ行が、折り返された行の続きか */
+  private boolean bContinuation;
+
   private String senderAddress;
   private String helo;
   private String mailFrom;
@@ -101,11 +127,32 @@ public class SmtpProcess implements ServerProcess {
     Writer writer = null;
     BufferedReader br = null;
     PrintStream ps = null;
+    boolean acquired = false;
+    maxLine = parameter.getInt("maxLine", Integer.parseInt(Constants.DEFAULT_MAX_LINE));
+    maxCommandLine =
+        parameter.getInt("maxCommandLine", Integer.parseInt(Constants.DEFAULT_MAX_COMMAND_LINE));
+    maxRcpt = parameter.getInt("maxRcpt", Integer.parseInt(Constants.DEFAULT_MAX_RCPT));
+    maxSize = parameter.getInteger("maxSize", Integer.parseInt(Constants.DEFAULT_MAX_SIZE));
     try {
+      socket.setSoTimeout(
+          parameter.getInt("soTimeout", Integer.parseInt(Constants.DEFAULT_SO_TIMEOUT)));
       br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+      lineReader = new LineReader(br);
       ps = new PrintStream(socket.getOutputStream());
+      acquired =
+          ConnectionLimiter.singleton()
+              .acquire(
+                  senderAddress,
+                  parameter.getInt("maxConn", Integer.parseInt(Constants.DEFAULT_MAX_CONN)),
+                  parameter.getInt(
+                      "maxConnPerIp", Integer.parseInt(Constants.DEFAULT_MAX_CONN_PER_IP)));
+      if (!acquired) {
+        logger.log(Level.WARNING, "Too many connections from IP:" + senderAddress);
+        SmtpUtil.recieveLine(ps, Constants.RECV_421_BUSY);
+        return;
+      }
       SmtpUtil.recieveLine(ps, "220 ", parameter.get("host"), " SMTP");
-      String line = br.readLine();
+      String line = nextLine();
       // HELO
       // MAIL FROM:
       // RCPT TO:
@@ -160,7 +207,15 @@ public class SmtpProcess implements ServerProcess {
             default:
           }
         } else if (bData) {
-          if (".".equals(line)) {
+          if (!bContinuation && ".".equals(line) && bOverSize) {
+            // サイズ超過のメッセージは破棄する
+            writer.close();
+            mail.delete();
+            mail = null;
+            transferList.clear();
+            SmtpUtil.recieveLine(ps, Constants.RECV_552);
+            init();
+          } else if (!bContinuation && ".".equals(line)) {
             // メッセージ終了
             writer.close();
             if (bSpam) {
@@ -230,18 +285,25 @@ public class SmtpProcess implements ServerProcess {
               SmtpUtil.recieveLine(ps, Constants.RECV_250_OK);
             }
             init();
-          } else if (!line.isEmpty() && line.charAt(0) == '.') {
-            writer.write(line.substring(1));
-            writer.write("\r\n");
+          } else if (bOverSize) {
+            // サイズ超過後は終端まで破棄する
           } else {
-            // メッセージ本文
-            // 禁止文字が含まれる場合は、迷惑メールに追加
-            Matcher matcher = Constants.pattern.matcher(line);
-            if (matcher.find()) {
-              bSpam = true;
+            dataSize += line.length() + 2L;
+            if (dataSize > maxSize) {
+              bOverSize = true;
+            } else if (!bContinuation && !line.isEmpty() && line.charAt(0) == '.') {
+              writer.write(line.substring(1));
+              writer.write("\r\n");
+            } else {
+              // メッセージ本文
+              // 禁止文字が含まれる場合は、迷惑メールに追加
+              Matcher matcher = Constants.pattern.matcher(line);
+              if (matcher.find()) {
+                bSpam = true;
+              }
+              writer.write(line);
+              writer.write("\r\n");
             }
-            writer.write(line);
-            writer.write("\r\n");
           }
         } else if ((SmtpUtil.isEhlo(line) || SmtpUtil.isHelo(line))) {
           bHelo = true;
@@ -250,6 +312,7 @@ public class SmtpProcess implements ServerProcess {
           if (parameter.is("transfer")) {
             SmtpUtil.recieveLine(
                 ps, Constants.RECV_250, "-", parameter.get("host"), " Hello ", senderAddress);
+            SmtpUtil.recieveLine(ps, Constants.RECV_250, "-SIZE ", String.valueOf(maxSize));
             if (!(socket instanceof SSLSocket) && hasKeyStore()) {
               // STARTTLS完了までAUTHは広告しない
               SmtpUtil.recieveLine(ps, Constants.RECV_250, " STARTTLS");
@@ -260,10 +323,12 @@ public class SmtpProcess implements ServerProcess {
 
             if ((socket instanceof SSLSocket) || !hasKeyStore()) {
               SmtpUtil.recieveLine(
-                  ps, Constants.RECV_250, " ", parameter.get("host"), " Hello ", senderAddress);
+                  ps, Constants.RECV_250, "-", parameter.get("host"), " Hello ", senderAddress);
+              SmtpUtil.recieveLine(ps, Constants.RECV_250, " SIZE ", String.valueOf(maxSize));
             } else {
               SmtpUtil.recieveLine(
                   ps, Constants.RECV_250, "-", parameter.get("host"), " Hello ", senderAddress);
+              SmtpUtil.recieveLine(ps, Constants.RECV_250, "-SIZE ", String.valueOf(maxSize));
               SmtpUtil.recieveLine(ps, Constants.RECV_250, " STARTTLS");
             }
           }
@@ -272,7 +337,10 @@ public class SmtpProcess implements ServerProcess {
           if (hasKeyStore()) {
             SmtpUtil.recieveLine(ps, Constants.RECV_220, " Go ahead");
             socket = startTls();
+            socket.setSoTimeout(
+                parameter.getInt("soTimeout", Integer.parseInt(Constants.DEFAULT_SO_TIMEOUT)));
             br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            lineReader = new LineReader(br);
             ps = new PrintStream(socket.getOutputStream());
           } else {
             SmtpUtil.recieveLine(ps, "502", " Command not implemented");
@@ -289,19 +357,29 @@ public class SmtpProcess implements ServerProcess {
           init();
         } else if (SmtpUtil.isMailFrom(line)) {
           if (bHelo) {
-            mailFrom = line.substring(10).trim().replaceAll("[<>]", "");
-            logger.log(Level.INFO, "From email address:" + mailFrom);
-            SmtpUtil.recieveLine(ps, Constants.RECV_250_OK);
-            bMailFrom = true;
+            String[] parsed = SmtpUtil.parseAddress(line, true);
+            if (parsed == null) {
+              SmtpUtil.recieveLine(ps, Constants.RECV_501_ADDRESS);
+            } else if (isDeclaredSizeOver(line)) {
+              SmtpUtil.recieveLine(ps, Constants.RECV_552);
+            } else {
+              mailFrom = parsed[0].isEmpty() ? "" : parsed[0] + "@" + parsed[1];
+              logger.log(Level.INFO, "From email address:" + mailFrom);
+              SmtpUtil.recieveLine(ps, Constants.RECV_250_OK);
+              bMailFrom = true;
+            }
           } else {
             // エラー500
             SmtpUtil.recieveLine(ps, "451 ERROR");
           }
         } else if (SmtpUtil.isRcptTo(line)) {
-          if (bMailFrom) {
-            String[] heads = line.split(":");
-            String address = heads[1].trim().replaceAll("[<>]", "");
-            String[] addresses = address.split("@");
+          String[] addresses = bMailFrom ? SmtpUtil.parseAddress(line, false) : null;
+          if (bMailFrom && addresses == null) {
+            SmtpUtil.recieveLine(ps, Constants.RECV_501_ADDRESS);
+          } else if (bMailFrom && rcptCount >= maxRcpt) {
+            SmtpUtil.recieveLine(ps, Constants.RECV_452_TOO_MANY_RCPT);
+          } else if (bMailFrom) {
+            String address = addresses[0] + "@" + addresses[1];
             logger.log(Level.INFO, "To email address:" + address);
             if (addresses[1].equals(parameter.get("host"))) {
               // 宛先チェック
@@ -332,6 +410,7 @@ public class SmtpProcess implements ServerProcess {
               }
               if (boxSet.size() > 0) {
                 SmtpUtil.recieveLine(ps, Constants.RECV_250_OK);
+                rcptCount++;
                 bRcptTo = true;
               } else {
                 // エラーユーザー存在しない
@@ -343,6 +422,7 @@ public class SmtpProcess implements ServerProcess {
               SmtpUtil.recieveLine(ps, Constants.RECV_250_OK);
               bTransfer = true;
               transferList.add(address);
+              rcptCount++;
               bRcptTo = true;
             } else {
               // エラーホストが違う
@@ -395,14 +475,22 @@ public class SmtpProcess implements ServerProcess {
           SmtpUtil.recieveLine(ps, "500 Syntax error, command unrecognized");
         }
         startTime = System.currentTimeMillis();
-        line = br.readLine();
+        line = nextLine();
       }
 
+    } catch (LineTooLongException e) {
+      logger.log(Level.WARNING, "Line too long from IP:" + senderAddress);
+      if (ps != null) {
+        SmtpUtil.recieveLine(ps, Constants.RECV_500_LINE_TOO_LONG);
+      }
     } catch (IOException e) {
       e.printStackTrace();
     } catch (Throwable e) {
       e.printStackTrace();
     } finally {
+      if (acquired) {
+        ConnectionLimiter.singleton().release(senderAddress);
+      }
       if (br != null) {
         try {
           br.close();
@@ -446,12 +534,44 @@ public class SmtpProcess implements ServerProcess {
     }
   }
 
+  /**
+   * 次の行を読み込む. DATA中は上限で折り返し、それ以外は上限超過を例外とする.
+   *
+   * @return 行。終端の場合はnull
+   * @throws IOException 通信エラー、または行長超過の場合
+   */
+  private String nextLine() throws IOException {
+    bContinuation = lineReader.isFolded();
+    return lineReader.readLine(bData ? maxLine : maxCommandLine, bData);
+  }
+
+  /**
+   * MAIL FROMのSIZEパラメータで宣言されたサイズが上限を超えているか.
+   *
+   * @param line MAIL FROMコマンド行
+   * @return 上限を超えている場合はtrue
+   */
+  private boolean isDeclaredSizeOver(String line) {
+    Matcher matcher = Constants.REG_EXP_SIZE_PARAM.matcher(line);
+    if (!matcher.find()) {
+      return false;
+    }
+    try {
+      return Long.parseLong(matcher.group(1)) > maxSize;
+    } catch (NumberFormatException e) {
+      return true;
+    }
+  }
+
   /** 初期化. */
   private void init() {
     mail = null;
     bMailFrom = false;
     bRcptTo = false;
     bData = false;
+    bOverSize = false;
+    dataSize = 0;
+    rcptCount = 0;
     boxSet.clear();
   }
 
@@ -555,14 +675,16 @@ public class SmtpProcess implements ServerProcess {
         if (all != null) {
           add = Boolean.parseBoolean(all);
         }
-        String topLevelDomain =
-            prop.getProperty("*" + mailFrom.substring(mailFrom.lastIndexOf(".")));
-        if (topLevelDomain != null) {
-          add = Boolean.parseBoolean(topLevelDomain);
-        }
-        String domain = prop.getProperty("*" + mailFrom.substring(mailFrom.indexOf('@')));
-        if (domain != null) {
-          add = Boolean.parseBoolean(domain);
+        if (!mailFrom.isEmpty()) {
+          String topLevelDomain =
+              prop.getProperty("*" + mailFrom.substring(mailFrom.lastIndexOf(".")));
+          if (topLevelDomain != null) {
+            add = Boolean.parseBoolean(topLevelDomain);
+          }
+          String domain = prop.getProperty("*" + mailFrom.substring(mailFrom.indexOf('@')));
+          if (domain != null) {
+            add = Boolean.parseBoolean(domain);
+          }
         }
         String ignore = prop.getProperty(mailFrom);
         if (ignore != null) {

@@ -96,4 +96,36 @@ public class SmtpUtilTest {
     assertThat(SmtpUtil.resolveUserDir(tempDir.toFile(), "a/b")).isNull();
     assertThat(SmtpUtil.resolveUserDir(tempDir.toFile(), "a b")).isNull();
   }
+
+  @Test
+  public void parseAddress_ok() {
+    assertThat(SmtpUtil.parseAddress("MAIL FROM:<a@example.com>", false))
+        .containsExactly("a", "example.com");
+    assertThat(SmtpUtil.parseAddress("RCPT TO: a@example.com", false))
+        .containsExactly("a", "example.com");
+    assertThat(SmtpUtil.parseAddress("MAIL FROM:<a@example.com> SIZE=100", false))
+        .containsExactly("a", "example.com");
+  }
+
+  @Test
+  public void parseAddress_ng() {
+    assertThat(SmtpUtil.parseAddress("MAIL FROM", false)).isNull();
+    assertThat(SmtpUtil.parseAddress("MAIL FROM:", false)).isNull();
+    assertThat(SmtpUtil.parseAddress("MAIL FROM:<>", false)).isNull();
+    assertThat(SmtpUtil.parseAddress("MAIL FROM:abc", false)).isNull();
+    assertThat(SmtpUtil.parseAddress("RCPT TO:<@example.com>", false)).isNull();
+    assertThat(SmtpUtil.parseAddress("RCPT TO:<a@>", false)).isNull();
+    assertThat(SmtpUtil.parseAddress("RCPT TO:<a@@example.com>", false)).isNull();
+    assertThat(SmtpUtil.parseAddress("RCPT TO:<../a@example.com>", false)).isNull();
+    assertThat(SmtpUtil.parseAddress("RCPT TO:<a@example..com>", false)).isNull();
+    assertThat(SmtpUtil.parseAddress("RCPT TO:<" + "a".repeat(65) + "@example.com>", false))
+        .isNull();
+  }
+
+  @Test
+  public void parseAddress_nullPath() {
+    assertThat(SmtpUtil.parseAddress("MAIL FROM:<>", true)).containsExactly("", "");
+    assertThat(SmtpUtil.parseAddress("MAIL FROM:<> SIZE=100", true)).containsExactly("", "");
+    assertThat(SmtpUtil.parseAddress("RCPT TO:<>", false)).isNull();
+  }
 }

@@ -14,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.regex.Matcher;
 
 /**
  * SMTPの処理で使用するユーティリティークラス.
@@ -146,6 +147,38 @@ public class SmtpUtil {
 
   public static boolean isAuthLogin(String cmd) {
     return Constants.REG_EXP_AUTH_LOGIN.matcher(cmd).matches();
+  }
+
+  /**
+   * MAIL FROM / RCPT TO コマンドからアドレスを抽出して構文検証する.
+   *
+   * @param line コマンド行
+   * @param allowNullPath ヌル逆方向パス(&lt;&gt;)を許可する場合はtrue(MAIL FROMのみ)
+   * @return {ローカル部, ドメイン部}。ヌル逆方向パスの場合は{"", ""}。構文が不正な場合はnull
+   */
+  public static String[] parseAddress(String line, boolean allowNullPath) {
+    int index = line.indexOf(':');
+    if (index < 0) {
+      return null;
+    }
+    String path = line.substring(index + 1).trim();
+    if (allowNullPath && Constants.REG_EXP_NULL_PATH.matcher(path).matches()) {
+      return new String[] {"", ""};
+    }
+    Matcher matcher = Constants.REG_EXP_ADDRESS.matcher(path);
+    if (!matcher.matches()) {
+      return null;
+    }
+    String local = matcher.group(1);
+    String domain = matcher.group(2);
+    if (local.length() > Constants.MAX_LOCAL_PART_LENGTH
+        || local.length() + 1 + domain.length() > Constants.MAX_ADDRESS_LENGTH
+        || domain.startsWith(".")
+        || domain.endsWith(".")
+        || domain.contains("..")) {
+      return null;
+    }
+    return new String[] {local, domain};
   }
 
   /**
