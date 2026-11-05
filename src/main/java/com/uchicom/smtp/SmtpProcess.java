@@ -4,6 +4,7 @@ package com.uchicom.smtp;
 import com.sun.mail.smtp.SMTPAddressFailedException;
 import com.sun.mail.smtp.SMTPSendFailedException;
 import com.uchicom.server.ServerProcess;
+import com.uchicom.smtp.auth.ChannelBinding;
 import com.uchicom.smtp.auth.LoginMechanism;
 import com.uchicom.smtp.auth.PlainMechanism;
 import com.uchicom.smtp.auth.SaslAuthException;
@@ -111,6 +112,9 @@ public class SmtpProcess implements ServerProcess {
   private static final String MECHANISM_PLAIN = "PLAIN";
 
   private static final String MECHANISM_LOGIN = "LOGIN";
+
+  /** チャネルバインディング付きSCRAM機構名の接尾辞 */
+  private static final String MECHANISM_PLUS_SUFFIX = "-PLUS";
 
   private String authName;
 
@@ -818,7 +822,9 @@ public class SmtpProcess implements ServerProcess {
           KeyManagementException {
     String password = parameter.get("keyStorePass");
     KeyStore ks = KeyStore.getInstance("JKS");
-    ks.load(new FileInputStream(parameter.get("keyStoreName")), password.toCharArray());
+    try (FileInputStream fis = new FileInputStream(parameter.get("keyStoreName"))) {
+      ks.load(fis, password.toCharArray());
+    }
     KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
     kmf.init(ks, password.toCharArray());
     SSLContext sslContext = SSLContext.getInstance("TLS");
@@ -836,9 +842,26 @@ public class SmtpProcess implements ServerProcess {
     return sslSocket;
   }
 
-  /** EHLOで広告するSASL機構名(スペース区切り). 強いSCRAMを先に並べる. */
-  private static String authMechanisms() {
+  /**
+   * 現在のTLS接続のチャネルバインディングデータ(tls-server-end-point)を求める.
+   *
+   * @return バインディングデータ。TLSでない場合や、証明書のハッシュ関数を決められない場合はnull
+   */
+  byte[] channelBindingData() {
+    if (!(socket instanceof SSLSocket sslSocket)) {
+      return null;
+    }
+    return ChannelBinding.serverEndPoint(sslSocket.getSession());
+  }
+
+  /** EHLOで広告するSASL機構名(スペース区切り). 強いSCRAMを先に並べ、-PLUSは通常のSCRAMより前に並べる. */
+  private String authMechanisms() {
     StringBuilder mechanisms = new StringBuilder();
+    if (channelBindingData() != null) {
+      for (ScramAlgorithm algorithm : ScramAlgorithm.values()) {
+        mechanisms.append(algorithm.getMechanismName()).append(MECHANISM_PLUS_SUFFIX).append(' ');
+      }
+    }
     for (ScramAlgorithm algorithm : ScramAlgorithm.values()) {
       mechanisms.append(algorithm.getMechanismName()).append(' ');
     }
@@ -867,11 +890,26 @@ public class SmtpProcess implements ServerProcess {
     if (MECHANISM_LOGIN.equalsIgnoreCase(name)) {
       return new LoginMechanism((user, pass) -> SmtpUtil.verifyPassword(baseDir, user, pass));
     }
-    ScramAlgorithm algorithm = ScramAlgorithm.find(name);
-    return algorithm == null
-        ? null
-        : new ScramMechanism(
-            algorithm, (user, alg) -> SmtpUtil.findScramCredential(baseDir, user, alg));
+    byte[] bindingData = channelBindingData();
+    boolean plus =
+        name.regionMatches(
+            true,
+            name.length() - MECHANISM_PLUS_SUFFIX.length(),
+            MECHANISM_PLUS_SUFFIX,
+            0,
+            MECHANISM_PLUS_SUFFIX.length());
+    ScramAlgorithm algorithm =
+        ScramAlgorithm.find(
+            plus ? name.substring(0, name.length() - MECHANISM_PLUS_SUFFIX.length()) : name);
+    if (algorithm == null || plus && bindingData == null) {
+      // -PLUSはTLS上でバインディングデータを提供できる場合のみ受け付ける
+      return null;
+    }
+    return new ScramMechanism(
+        algorithm,
+        (user, alg) -> SmtpUtil.findScramCredential(baseDir, user, alg),
+        plus,
+        bindingData);
   }
 
   /** AUTH実行中のクライアント応答(base64)を処理する. */
