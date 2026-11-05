@@ -3,12 +3,12 @@ package com.uchicom.smtp;
 
 import com.uchicom.smtp.dto.WebhookDto;
 import com.uchicom.smtp.service.WebhookService;
+import jakarta.mail.MessagingException;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.List;
-import javax.mail.MessagingException;
 import org.yaml.snakeyaml.Yaml;
 
 /**
