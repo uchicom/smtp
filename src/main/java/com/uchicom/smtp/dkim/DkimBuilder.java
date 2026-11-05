@@ -1,6 +1,8 @@
 // (C) 2022 uchicom
 package com.uchicom.smtp.dkim;
 
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -20,8 +22,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
-import javax.mail.MessagingException;
-import javax.mail.internet.MimeMessage;
 
 public class DkimBuilder {
   private final Logger logger;

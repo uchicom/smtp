@@ -4,7 +4,6 @@ package com.uchicom.smtp;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.sun.mail.smtp.SMTPSendFailedException;
 import com.uchicom.smtp.auth.ChannelBinding;
 import com.uchicom.smtp.auth.ScramAlgorithm;
 import com.uchicom.smtp.auth.ScramCredential;
@@ -25,6 +24,7 @@ import java.util.logging.Logger;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.X509TrustManager;
+import org.eclipse.angus.mail.smtp.SMTPSendFailedException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 

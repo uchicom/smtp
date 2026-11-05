@@ -1,8 +1,6 @@
 // (C) 2014 uchicom
 package com.uchicom.smtp;
 
-import com.sun.mail.smtp.SMTPAddressFailedException;
-import com.sun.mail.smtp.SMTPSendFailedException;
 import com.uchicom.server.ServerProcess;
 import com.uchicom.smtp.auth.ChannelBinding;
 import com.uchicom.smtp.auth.LoginMechanism;
@@ -12,6 +10,7 @@ import com.uchicom.smtp.auth.SaslMechanism;
 import com.uchicom.smtp.auth.ScramAlgorithm;
 import com.uchicom.smtp.auth.ScramMechanism;
 import com.uchicom.util.Parameter;
+import jakarta.mail.MessagingException;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -46,7 +45,6 @@ import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
-import javax.mail.MessagingException;
 import javax.naming.NamingException;
 import javax.naming.directory.Attribute;
 import javax.naming.directory.Attributes;
@@ -55,6 +53,8 @@ import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
+import org.eclipse.angus.mail.smtp.SMTPAddressFailedException;
+import org.eclipse.angus.mail.smtp.SMTPSendFailedException;
 
 /**
  * SMTP処理クラス. 送信処理認証後は、他サーバに直接接続してプロキシ―のような処理をする。
