@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.sun.mail.smtp.SMTPSendFailedException;
+import com.uchicom.smtp.auth.ChannelBinding;
 import com.uchicom.smtp.auth.ScramAlgorithm;
 import com.uchicom.smtp.auth.ScramCredential;
 import java.io.BufferedReader;
@@ -15,11 +16,15 @@ import java.io.PrintStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import java.util.logging.Logger;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.X509TrustManager;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -36,6 +41,11 @@ public class SmtpProcessTest {
 
   /** テスト用SMTPプロセスを起動し、クライアント側のやり取りを実行する. */
   private void session(String[] args, ClientScript script) throws Exception {
+    session(args, (reader, ps, client) -> script.run(reader, ps));
+  }
+
+  /** クライアントのソケットも使えるセッション(STARTTLSなど). */
+  private void session(String[] args, SocketScript script) throws Exception {
     SmtpParameter parameter = new SmtpParameter(args);
     parameter.init();
     try (ServerSocket server = new ServerSocket(0, 1, java.net.InetAddress.getLoopbackAddress())) {
@@ -56,10 +66,14 @@ public class SmtpProcessTest {
             new BufferedReader(
                 new InputStreamReader(client.getInputStream(), StandardCharsets.UTF_8));
         var ps = new PrintStream(client.getOutputStream());
-        script.run(reader, ps);
+        script.run(reader, ps, client);
       }
       thread.join(5000);
     }
+  }
+
+  private interface SocketScript {
+    void run(BufferedReader reader, PrintStream ps, Socket client) throws Exception;
   }
 
   private interface ClientScript {
@@ -530,6 +544,160 @@ public class SmtpProcessTest {
         });
   }
 
+  /** keytoolでテスト用のキーストアを作る. */
+  private File createKeyStore(File dir) throws Exception {
+    File keyStore = new File(dir, "keystore");
+    Process process =
+        new ProcessBuilder(
+                new File(System.getProperty("java.home"), "bin/keytool").getAbsolutePath(),
+                "-genkeypair",
+                "-alias",
+                "smtp",
+                "-keyalg",
+                "RSA",
+                "-keysize",
+                "2048",
+                "-dname",
+                "CN=localhost",
+                "-validity",
+                "2",
+                "-storetype",
+                "JKS",
+                "-keystore",
+                keyStore.getAbsolutePath(),
+                "-storepass",
+                "changeit",
+                "-keypass",
+                "changeit")
+            .redirectErrorStream(true)
+            .start();
+    process.getInputStream().readAllBytes();
+    assertThat(process.waitFor()).isZero();
+    return keyStore;
+  }
+
+  /** STARTTLSを完了した状態でクライアントのやり取りを実行する. 証明書は検証しない. */
+  private void tlsSession(File dir, TlsScript script) throws Exception {
+    File keyStore = createKeyStore(dir);
+    String[] base = transferArgs(dir);
+    String[] args = Arrays.copyOf(base, base.length + 4);
+    args[base.length] = "-keyStoreName";
+    args[base.length + 1] = keyStore.getAbsolutePath();
+    args[base.length + 2] = "-keyStorePass";
+    args[base.length + 3] = "changeit";
+    session(
+        args,
+        (reader, ps, client) -> {
+          assertThat(reader.readLine()).startsWith("220");
+          // STARTTLS前はAUTHを広告しない
+          assertThat(send(reader, ps, "EHLO test")).doesNotContain("AUTH");
+          assertThat(send(reader, ps, "STARTTLS")).startsWith("220");
+          SSLContext context = SSLContext.getInstance("TLS");
+          context.init(
+              null,
+              new javax.net.ssl.TrustManager[] {
+                new X509TrustManager() {
+                  public void checkClientTrusted(X509Certificate[] chain, String authType) {}
+
+                  public void checkServerTrusted(X509Certificate[] chain, String authType) {}
+
+                  public X509Certificate[] getAcceptedIssuers() {
+                    return new X509Certificate[0];
+                  }
+                }
+              },
+              null);
+          try (SSLSocket tls =
+              (SSLSocket)
+                  context
+                      .getSocketFactory()
+                      .createSocket(
+                          client,
+                          client.getInetAddress().getHostAddress(),
+                          client.getPort(),
+                          true)) {
+            tls.startHandshake();
+            var tlsReader =
+                new BufferedReader(
+                    new InputStreamReader(tls.getInputStream(), StandardCharsets.UTF_8));
+            var tlsPs = new PrintStream(tls.getOutputStream());
+            script.run(tlsReader, tlsPs, tls);
+          }
+        });
+  }
+
+  private interface TlsScript {
+    void run(BufferedReader reader, PrintStream ps, SSLSocket tls) throws Exception;
+  }
+
+  @Test
+  public void tlsAdvertisesScramPlus(@TempDir File dir) throws Exception {
+    tlsSession(
+        dir,
+        (reader, ps, tls) -> {
+          assertThat(send(reader, ps, "EHLO test"))
+              .endsWith(
+                  "250 AUTH SCRAM-SHA-512-PLUS SCRAM-SHA-384-PLUS SCRAM-SHA-256-PLUS"
+                      + " SCRAM-SHA-224-PLUS SCRAM-SHA-1-PLUS SCRAM-SHA-512 SCRAM-SHA-384"
+                      + " SCRAM-SHA-256 SCRAM-SHA-224 SCRAM-SHA-1 PLAIN LOGIN");
+        });
+  }
+
+  @Test
+  public void tlsScramPlus(@TempDir File dir) throws Exception {
+    tlsSession(
+        dir,
+        (reader, ps, tls) -> {
+          assertThat(send(reader, ps, "EHLO test")).contains("SCRAM-SHA-256-PLUS");
+          // クライアント側はピア(サーバー)証明書から求める
+          byte[] binding =
+              ChannelBinding.serverEndPoint(
+                  (X509Certificate) tls.getSession().getPeerCertificates()[0]);
+          assertThat(binding).isNotNull();
+          String gs2 = "p=tls-server-end-point,,";
+
+          // バインディングデータ不一致
+          assertThat(
+                  scram(
+                      reader,
+                      ps,
+                      "SCRAM-SHA-256-PLUS",
+                      ScramAlgorithm.SHA_256,
+                      "secret",
+                      gs2,
+                      new byte[] {1, 2, 3}))
+              .startsWith("535");
+          // 成功
+          assertThat(
+                  scram(
+                      reader,
+                      ps,
+                      "SCRAM-SHA-256-PLUS",
+                      ScramAlgorithm.SHA_256,
+                      "secret",
+                      gs2,
+                      binding))
+              .startsWith("235");
+        });
+  }
+
+  @Test
+  public void tlsScramPlusRequiresChannelBinding(@TempDir File dir) throws Exception {
+    tlsSession(
+        dir,
+        (reader, ps, tls) -> {
+          assertThat(send(reader, ps, "EHLO test")).contains("SCRAM-SHA-256-PLUS");
+          // -PLUS機構でバインディングなし(n)
+          assertThat(send(reader, ps, "AUTH SCRAM-SHA-256-PLUS")).isEqualTo("334 ");
+          assertThat(send(reader, ps, b64("n,,n=auth,r=abc"))).startsWith("535");
+          // 非PLUS機構でyはダウングレードとして拒否
+          assertThat(send(reader, ps, "AUTH SCRAM-SHA-256")).isEqualTo("334 ");
+          assertThat(send(reader, ps, b64("y,,n=auth,r=abc"))).startsWith("535");
+          // 非PLUS機構でnは受け付ける
+          assertThat(scram(reader, ps, ScramAlgorithm.SHA_256, "secret")).startsWith("235");
+        });
+  }
+
   @Test
   public void authErrors(@TempDir File dir) throws Exception {
     session(
@@ -575,10 +743,29 @@ public class SmtpProcessTest {
   private static String scram(
       BufferedReader reader, PrintStream ps, ScramAlgorithm algorithm, String password)
       throws Exception {
+    return scram(reader, ps, algorithm.getMechanismName(), algorithm, password, "n,,", new byte[0]);
+  }
+
+  /**
+   * SCRAMのクライアント側(チャネルバインディング指定可). 最後の応答を返す.
+   *
+   * @param mechanism AUTHで指定する機構名
+   * @param gs2Header gs2ヘッダ
+   * @param binding 最終メッセージのc=に付加するバインディングデータ
+   */
+  private static String scram(
+      BufferedReader reader,
+      PrintStream ps,
+      String mechanism,
+      ScramAlgorithm algorithm,
+      String password,
+      String gs2Header,
+      byte[] binding)
+      throws Exception {
     String clientFirstBare = "n=auth,r=clientnonce";
-    String reply = send(reader, ps, "AUTH " + algorithm.getMechanismName());
+    String reply = send(reader, ps, "AUTH " + mechanism);
     assertThat(reply).isEqualTo("334 ");
-    reply = send(reader, ps, b64("n,," + clientFirstBare));
+    reply = send(reader, ps, b64(gs2Header + clientFirstBare));
     assertThat(reply).startsWith("334 ");
     String serverFirst = unb64(reply.substring(4));
     String[] attrs = serverFirst.split(",");
@@ -590,7 +777,12 @@ public class SmtpProcessTest {
         algorithm.hi(password.getBytes(StandardCharsets.UTF_8), salt, iterations);
     byte[] clientKey =
         algorithm.hmac(saltedPassword, "Client Key".getBytes(StandardCharsets.US_ASCII));
-    String withoutProof = "c=" + b64("n,,") + ",r=" + nonce;
+    byte[] cbind = new byte[gs2Header.length() + binding.length];
+    System.arraycopy(
+        gs2Header.getBytes(StandardCharsets.US_ASCII), 0, cbind, 0, gs2Header.length());
+    System.arraycopy(binding, 0, cbind, gs2Header.length(), binding.length);
+    String withoutProof =
+        "c=" + java.util.Base64.getEncoder().encodeToString(cbind) + ",r=" + nonce;
     byte[] authMessage =
         (clientFirstBare + "," + serverFirst + "," + withoutProof).getBytes(StandardCharsets.UTF_8);
     byte[] signature = algorithm.hmac(credential.storedKey(), authMessage);

@@ -21,12 +21,31 @@ class ScramMechanismTest {
     return (user, algorithm) -> algorithm.derive(password, SALT, 4096);
   }
 
-  /** クライアント側の処理. 最後まで進めた機構を返す. */
   static ScramMechanism run(ScramAlgorithm algorithm, String serverPassword, String password)
       throws Exception {
-    var mechanism = new ScramMechanism(algorithm, source(serverPassword));
+    return run(
+        new ScramMechanism(algorithm, source(serverPassword)),
+        algorithm,
+        password,
+        "n,,",
+        new byte[0]);
+  }
+
+  /**
+   * クライアント側の処理. 最後まで進めた機構を返す.
+   *
+   * @param gs2Header クライアントが送るgs2ヘッダ(例: "n,,", "p=tls-server-end-point,,")
+   * @param clientBinding クライアントが最終メッセージのc=に付加するバインディングデータ
+   */
+  static ScramMechanism run(
+      ScramMechanism mechanism,
+      ScramAlgorithm algorithm,
+      String password,
+      String gs2Header,
+      byte[] clientBinding)
+      throws Exception {
     var clientFirstBare = "n=alice,r=clientnonce";
-    var serverFirst = new String(mechanism.step(bytes("n,," + clientFirstBare)));
+    var serverFirst = new String(mechanism.step(bytes(gs2Header + clientFirstBare)));
     var attrs = serverFirst.split(",");
     var nonce = attrs[0].substring(2);
     var salt = Base64.getDecoder().decode(attrs[1].substring(2));
@@ -36,7 +55,11 @@ class ScramMechanismTest {
     var credential = algorithm.derive(password, salt, iterations);
     var saltedPassword = algorithm.hi(bytes(password), salt, iterations);
     var clientKey = algorithm.hmac(saltedPassword, bytes("Client Key"));
-    var withoutProof = "c=biws,r=" + nonce;
+    var cbind = new java.io.ByteArrayOutputStream();
+    cbind.writeBytes(bytes(gs2Header));
+    cbind.writeBytes(clientBinding);
+    var withoutProof =
+        "c=" + Base64.getEncoder().encodeToString(cbind.toByteArray()) + ",r=" + nonce;
     var authMessage = bytes(clientFirstBare + "," + serverFirst + "," + withoutProof);
     var signature = algorithm.hmac(credential.storedKey(), authMessage);
     var proof = new byte[clientKey.length];
@@ -78,6 +101,93 @@ class ScramMechanismTest {
     var mechanism = new ScramMechanism(ScramAlgorithm.SHA_256, source("secret"));
     assertThatThrownBy(() -> mechanism.step(bytes("p=tls-unique,,n=alice,r=abc")))
         .isInstanceOf(SaslAuthException.class);
+  }
+
+  static final byte[] BINDING = {10, 20, 30, 40};
+  static final String PLUS_GS2 = "p=tls-server-end-point,,";
+
+  static ScramMechanism plus() {
+    return new ScramMechanism(ScramAlgorithm.SHA_256, source("secret"), true, BINDING);
+  }
+
+  @Test
+  void plus_success() throws Exception {
+    for (var algorithm : ScramAlgorithm.values()) {
+      var mechanism = new ScramMechanism(algorithm, source("secret"), true, BINDING);
+
+      run(mechanism, algorithm, "secret", PLUS_GS2, BINDING);
+
+      assertThat(mechanism.isComplete()).isTrue();
+      assertThat(mechanism.getUser()).isEqualTo("alice");
+    }
+  }
+
+  @Test
+  void plus_bindingMismatch_isRejected() {
+    assertThatThrownBy(
+            () -> run(plus(), ScramAlgorithm.SHA_256, "secret", PLUS_GS2, new byte[] {1, 2}))
+        .isInstanceOf(SaslAuthException.class)
+        .hasMessage("channel binding mismatch");
+  }
+
+  @Test
+  void plus_withoutBindingData_isRejected() {
+    assertThatThrownBy(() -> run(plus(), ScramAlgorithm.SHA_256, "secret", PLUS_GS2, new byte[0]))
+        .isInstanceOf(SaslAuthException.class)
+        .hasMessage("channel binding mismatch");
+  }
+
+  @Test
+  void plus_requiresServerEndPointType() {
+    for (var flag : new String[] {"n", "y", "p=tls-unique", "p=tls-exporter", "p=other"}) {
+      var mechanism = plus();
+      assertThatThrownBy(() -> mechanism.step(bytes(flag + ",,n=alice,r=abc")))
+          .isInstanceOf(SaslAuthException.class)
+          .hasMessage("channel binding required");
+    }
+  }
+
+  @Test
+  void plus_requiresBindingData() {
+    assertThatThrownBy(
+            () -> new ScramMechanism(ScramAlgorithm.SHA_256, source("secret"), true, null))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void nonPlus_rejectsChannelBindingType() {
+    var mechanism = new ScramMechanism(ScramAlgorithm.SHA_256, source("secret"), false, BINDING);
+    assertThatThrownBy(() -> mechanism.step(bytes(PLUS_GS2 + "n=alice,r=abc")))
+        .isInstanceOf(SaslAuthException.class)
+        .hasMessage("channel binding not supported");
+  }
+
+  /** サーバーが-PLUSを広告している場合、クライアントのy(対応を知らない)はダウングレードとして拒否する. */
+  @Test
+  void nonPlus_downgradeIsRejectedWhenPlusIsAdvertised() {
+    var mechanism = new ScramMechanism(ScramAlgorithm.SHA_256, source("secret"), false, BINDING);
+    assertThatThrownBy(() -> mechanism.step(bytes("y,,n=alice,r=abc")))
+        .isInstanceOf(SaslAuthException.class)
+        .hasMessage("channel binding downgrade detected");
+  }
+
+  @Test
+  void nonPlus_noBinding_isAcceptedWhenPlusIsAdvertised() throws Exception {
+    var mechanism = new ScramMechanism(ScramAlgorithm.SHA_256, source("secret"), false, BINDING);
+
+    run(mechanism, ScramAlgorithm.SHA_256, "secret", "n,,", new byte[0]);
+
+    assertThat(mechanism.isComplete()).isTrue();
+  }
+
+  /** -PLUSを広告していない場合は、クライアントのyを受け付ける. */
+  @Test
+  void nonPlus_yIsAcceptedWhenPlusIsNotAdvertised() throws Exception {
+    var mechanism = new ScramMechanism(ScramAlgorithm.SHA_256, source("secret"));
+
+    run(mechanism, ScramAlgorithm.SHA_256, "secret", "y,,", new byte[0]);
+
+    assertThat(mechanism.isComplete()).isTrue();
   }
 
   @Test

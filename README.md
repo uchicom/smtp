@@ -38,10 +38,13 @@ mvn exec:java "-Dexec.mainClass=com.uchicom.smtp.TestMain"
 `-transfer true` のとき、外部宛ての中継に認証が必要になる。EHLO で次の SASL 機構を広告する。
 
 - SCRAM-SHA-512 / SCRAM-SHA-384 / SCRAM-SHA-256 / SCRAM-SHA-224 / SCRAM-SHA-1 (RFC 5802, 7677)
+- SCRAM-SHA-512-PLUS / SCRAM-SHA-384-PLUS / SCRAM-SHA-256-PLUS / SCRAM-SHA-224-PLUS / SCRAM-SHA-1-PLUS (チャネルバインディング `tls-server-end-point`, RFC 5929)
 - PLAIN / LOGIN
 
+`-PLUS` 系は TLS 確立後のみ広告する。バインディングデータはサーバー証明書のハッシュで、署名に使われたハッシュ関数を使う(MD5/SHA-1 署名の場合は SHA-256)。Ed25519 / Ed448 の証明書はハッシュ関数が定義されないため、`-PLUS` 系を広告しない。`-PLUS` を広告している接続では、通常の SCRAM で `y`(クライアントが対応を知らないという宣言)を送るとダウングレードとして拒否する。
+
 **対応しない**
-- `-PLUS` 系(チャネルバインディング): Java の標準 API では `tls-unique` と `tls-exporter`(RFC 9266)に必要な値を取得できないため。
+- `tls-unique` / `tls-exporter`(RFC 9266): Java の標準 API では必要な値(Finished メッセージ、エクスポーター鍵)を取得できないため。`tls-server-end-point` は標準 API だけで求められる。
 - SCRAM-SHA3-512: 仕様がドラフトのため。
 
 キーストアを指定した場合は、STARTTLS 完了までは AUTH を広告せず、受け付けない。
