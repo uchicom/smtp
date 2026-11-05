@@ -63,6 +63,34 @@ public class SmtpParameter extends Parameter {
     if (!is("dkimSelector")) {
       put("dkimSelector", Constants.DEFAULT_DKIM_SELECTOR);
     }
+    // 本文行長上限(CRLFを除く文字数)
+    if (!is("maxLine")) {
+      put("maxLine", Constants.DEFAULT_MAX_LINE);
+    }
+    // コマンド行長上限(CRLFを除く文字数)
+    if (!is("maxCommandLine")) {
+      put("maxCommandLine", Constants.DEFAULT_MAX_COMMAND_LINE);
+    }
+    // 1通あたりの宛先数上限
+    if (!is("maxRcpt")) {
+      put("maxRcpt", Constants.DEFAULT_MAX_RCPT);
+    }
+    // メッセージサイズ上限(バイト)
+    if (!is("maxSize")) {
+      put("maxSize", Constants.DEFAULT_MAX_SIZE);
+    }
+    // ソケットタイムアウト(ミリ秒)
+    if (!is("soTimeout")) {
+      put("soTimeout", Constants.DEFAULT_SO_TIMEOUT);
+    }
+    // 同時接続数上限
+    if (!is("maxConn")) {
+      put("maxConn", Constants.DEFAULT_MAX_CONN);
+    }
+    // IPごとの同時接続数上限
+    if (!is("maxConnPerIp")) {
+      put("maxConnPerIp", Constants.DEFAULT_MAX_CONN_PER_IP);
+    }
     return true;
   }
 

@@ -2,6 +2,7 @@
 package com.uchicom.smtp.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -11,12 +12,12 @@ import com.uchicom.smtp.MockTest;
 import com.uchicom.smtp.dto.DetectionDto;
 import com.uchicom.smtp.dto.SendDto;
 import com.uchicom.smtp.dto.WebhookDto;
+import jakarta.mail.Header;
+import jakarta.mail.internet.MimeMessage;
+import jakarta.mail.internet.MimeMultipart;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Enumeration;
-import javax.mail.Header;
-import javax.mail.internet.MimeMessage;
-import javax.mail.internet.MimeMultipart;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
@@ -183,6 +184,116 @@ public class WebhooServiceTest extends MockTest {
     assertThat(sendCaptor.getAllValues()).isEmpty();
     assertThat(subjectCaptor.getAllValues()).isEmpty();
     assertThat(contentCaptor.getAllValues()).isEmpty();
+  }
+
+  @Test
+  public void webhook_subjectNull() throws Exception {
+    var service = spy(new WebhookService());
+    doNothing()
+        .when(service)
+        .send(
+            sendCaptor.capture(),
+            headersCaptor.capture(),
+            subjectCaptor.capture(),
+            contentCaptor.capture());
+    var file = mock(File.class);
+    var mimeMessage = mock(MimeMessage.class);
+    doReturn(mimeMessage).when(service).createMimeMessage(file);
+    doReturn(null).when(mimeMessage).getSubject();
+    doReturn("content").when(mimeMessage).getContent();
+    var webhook = new WebhookDto();
+    webhook.detection = new ArrayList<>();
+    var detection = new DetectionDto();
+    detection.subject = "subject";
+    webhook.detection.add(detection);
+    service.webhook(file, webhook);
+
+    assertThat(sendCaptor.getAllValues()).isEmpty();
+  }
+
+  @Test
+  public void webhook_subjectNullNoDetectionSubject() throws Exception {
+    var service = spy(new WebhookService());
+    doNothing()
+        .when(service)
+        .send(
+            sendCaptor.capture(),
+            headersCaptor.capture(),
+            subjectCaptor.capture(),
+            contentCaptor.capture());
+    var file = mock(File.class);
+    var mimeMessage = mock(MimeMessage.class);
+    doReturn(mimeMessage).when(service).createMimeMessage(file);
+    doReturn(null).when(mimeMessage).getSubject();
+    doReturn("content").when(mimeMessage).getContent();
+    var webhook = new WebhookDto();
+    webhook.detection = new ArrayList<>();
+    webhook.detection.add(new DetectionDto());
+    service.webhook(file, webhook);
+
+    assertThat(subjectCaptor.getValue()).isEmpty();
+  }
+
+  @Test
+  public void webhook_recipientsNull() throws Exception {
+    var service = spy(new WebhookService());
+    doNothing()
+        .when(service)
+        .send(
+            sendCaptor.capture(),
+            headersCaptor.capture(),
+            subjectCaptor.capture(),
+            contentCaptor.capture());
+    var file = mock(File.class);
+    var mimeMessage = mock(MimeMessage.class);
+    doReturn(mimeMessage).when(service).createMimeMessage(file);
+    doReturn("subject").when(mimeMessage).getSubject();
+    doReturn(null).when(mimeMessage).getFrom();
+    doReturn(null).when(mimeMessage).getRecipients(any());
+    doReturn("content").when(mimeMessage).getContent();
+    var webhook = new WebhookDto();
+    webhook.detection = new ArrayList<>();
+    var detection = new DetectionDto();
+    detection.from = "a";
+    detection.to = "b";
+    detection.cc = "c";
+    detection.bcc = "d";
+    webhook.detection.add(detection);
+    service.webhook(file, webhook);
+
+    assertThat(sendCaptor.getAllValues()).isEmpty();
+  }
+
+  @Test
+  public void escapeJson() throws Exception {
+    assertThat(WebhookService.escapeJson("a\"b\\c\nd\u0001")).isEqualTo("a\\\"b\\\\c\\nd\\u0001");
+  }
+
+  @Test
+  public void send_nullBody() throws Exception {
+    var service = new WebhookService();
+    var send = new SendDto();
+    send.url = "http://localhost:1/";
+    // 例外が発生しないこと
+    service.send(send, null, null, null);
+  }
+
+  @Test
+  public void match_redosTimeout() throws Exception {
+    var service = new WebhookService();
+    var target = "a".repeat(40) + "!";
+
+    var start = System.nanoTime();
+    var map = service.match("content", "(a+)+$", target);
+
+    assertThat(map).isEmpty();
+    assertThat((System.nanoTime() - start) / 1_000_000).isLessThan(5000);
+  }
+
+  @Test
+  public void match_nullTarget() throws Exception {
+    var service = new WebhookService();
+    assertThat(service.match("content", "(a)", null)).isEmpty();
   }
 
   @Test

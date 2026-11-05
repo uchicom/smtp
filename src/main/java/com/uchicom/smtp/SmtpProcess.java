@@ -2,8 +2,15 @@
 package com.uchicom.smtp;
 
 import com.uchicom.server.ServerProcess;
-import com.uchicom.smtp.type.AuthenticationStatus;
+import com.uchicom.smtp.auth.ChannelBinding;
+import com.uchicom.smtp.auth.LoginMechanism;
+import com.uchicom.smtp.auth.PlainMechanism;
+import com.uchicom.smtp.auth.SaslAuthException;
+import com.uchicom.smtp.auth.SaslMechanism;
+import com.uchicom.smtp.auth.ScramAlgorithm;
+import com.uchicom.smtp.auth.ScramMechanism;
 import com.uchicom.util.Parameter;
+import jakarta.mail.MessagingException;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -14,6 +21,7 @@ import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.io.Writer;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyManagementException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
@@ -22,14 +30,18 @@ import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Comparator;
+import java.util.Deque;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
+import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
@@ -41,6 +53,8 @@ import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
+import org.eclipse.angus.mail.smtp.SMTPAddressFailedException;
+import org.eclipse.angus.mail.smtp.SMTPSendFailedException;
 
 /**
  * SMTP処理クラス. 送信処理認証後は、他サーバに直接接続してプロキシ―のような処理をする。
@@ -64,19 +78,53 @@ public class SmtpProcess implements ServerProcess {
   /** 外のメールサーバに転送する */
   private boolean bTransfer;
 
-  private AuthenticationStatus authStatus;
   private boolean bSpam;
 
+  /** メッセージサイズが上限を超えた */
+  private boolean bOverSize;
+
+  /** 受信済みのメッセージサイズ(バイト) */
+  private long dataSize;
+
+  /** 本文行長上限(CRLFを除く文字数) */
+  private int maxLine;
+
+  /** コマンド行長上限(CRLFを除く文字数) */
+  private int maxCommandLine;
+
+  /** 1通あたりの宛先数上限 */
+  private int maxRcpt;
+
+  /** メッセージサイズ上限(バイト) */
+  private long maxSize;
+
+  /** 受け付けた宛先数 */
+  private int rcptCount;
+
+  private LineReader lineReader;
+
+  /** 直前に読んだ行が、折り返された行の続きか */
+  private boolean bContinuation;
+
   private String senderAddress;
-  private String helo;
   private String mailFrom;
   private Mail mail;
+  private static final String MECHANISM_PLAIN = "PLAIN";
+
+  private static final String MECHANISM_LOGIN = "LOGIN";
+
+  /** チャネルバインディング付きSCRAM機構名の接尾辞 */
+  private static final String MECHANISM_PLUS_SUFFIX = "-PLUS";
+
   private String authName;
+
+  /** 実行中のSASL認証(AUTH実行中でなければnull) */
+  private SaslMechanism sasl;
 
   private Set<MailBox> boxSet = new HashSet<>();
 
   /** 転送アドレス一覧 */
-  private List<String> transferList = new ArrayList<>();
+  private Set<String> transferList = new LinkedHashSet<>();
 
   private long startTime = System.currentTimeMillis();
 
@@ -100,11 +148,34 @@ public class SmtpProcess implements ServerProcess {
     Writer writer = null;
     BufferedReader br = null;
     PrintStream ps = null;
+    boolean acquired = false;
+    maxLine = parameter.getInt("maxLine", Integer.parseInt(Constants.DEFAULT_MAX_LINE));
+    maxCommandLine =
+        parameter.getInt("maxCommandLine", Integer.parseInt(Constants.DEFAULT_MAX_COMMAND_LINE));
+    maxRcpt = parameter.getInt("maxRcpt", Integer.parseInt(Constants.DEFAULT_MAX_RCPT));
+    maxSize = parameter.getInteger("maxSize", Integer.parseInt(Constants.DEFAULT_MAX_SIZE));
     try {
-      br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+      socket.setSoTimeout(
+          parameter.getInt("soTimeout", Integer.parseInt(Constants.DEFAULT_SO_TIMEOUT)));
+      br =
+          new BufferedReader(
+              new InputStreamReader(socket.getInputStream(), StandardCharsets.ISO_8859_1));
+      lineReader = new LineReader(br);
       ps = new PrintStream(socket.getOutputStream());
+      acquired =
+          ConnectionLimiter.singleton()
+              .acquire(
+                  senderAddress,
+                  parameter.getInt("maxConn", Integer.parseInt(Constants.DEFAULT_MAX_CONN)),
+                  parameter.getInt(
+                      "maxConnPerIp", Integer.parseInt(Constants.DEFAULT_MAX_CONN_PER_IP)));
+      if (!acquired) {
+        logger.log(Level.WARNING, "Too many connections from IP:" + senderAddress);
+        SmtpUtil.recieveLine(ps, Constants.RECV_421_BUSY);
+        return;
+      }
       SmtpUtil.recieveLine(ps, "220 ", parameter.get("host"), " SMTP");
-      String line = br.readLine();
+      String line = nextLine();
       // HELO
       // MAIL FROM:
       // RCPT TO:
@@ -114,51 +185,21 @@ public class SmtpProcess implements ServerProcess {
       // DATAの順で処理する
       // 認証状態、非認証状態で、判定できるコマンドを分ける、状態遷移もつける
       while (line != null) {
-        if (authStatus == AuthenticationStatus.USER
-            || authStatus == AuthenticationStatus.PASSWORD) {
-          switch (authStatus) {
-            case USER:
-              String name = new String(Base64.getDecoder().decode(line));
-              File dir = new File(parameter.getFile("dir"), name);
-              if (dir.exists() && dir.isDirectory()) {
-                authStatus = AuthenticationStatus.PASSWORD;
-                authName = name;
-
-                SmtpUtil.recieveLine(ps, Constants.RECV_334, " UGFzc3dvcmQ6");
-              }
-              break;
-            case PASSWORD:
-              String pass = new String(Base64.getDecoder().decode(line));
-              File passwordFile =
-                  new File(
-                      new File(parameter.getFile("dir"), authName), Constants.PASSWORD_FILE_NAME);
-              if (passwordFile.exists() && passwordFile.isFile()) {
-                try (BufferedReader passReader =
-                    new BufferedReader(
-                        new InputStreamReader(new FileInputStream(passwordFile))); ) {
-                  String password = passReader.readLine();
-                  while ("".equals(password)) {
-                    password = passReader.readLine();
-                  }
-                  if (pass.equals(password)) {
-
-                    SmtpUtil.recieveLine(ps, Constants.RECV_235);
-                    bAuth = true;
-                    authStatus = AuthenticationStatus.AUTH;
-                  } else {
-                    // パスワード不一致エラー
-                    SmtpUtil.recieveLine(ps, Constants.RECV_535);
-                    authStatus = AuthenticationStatus.NOAUTH;
-                  }
-                }
-              }
-              break;
-            default:
-          }
+        if (sasl != null) {
+          authResponse(line, ps);
         } else if (bData) {
-          if (".".equals(line)) {
+          if (!bContinuation && ".".equals(line) && bOverSize) {
+            // サイズ超過のメッセージは破棄する
+            writer.close();
+            mail.delete();
+            mail = null;
+            transferList.clear();
+            SmtpUtil.recieveLine(ps, Constants.RECV_552);
+            init();
+          } else if (!bContinuation && ".".equals(line)) {
             // メッセージ終了
             writer.close();
+            Exception failure = null;
             if (bSpam) {
               // 迷惑メールフォルダに移動
               try {
@@ -172,48 +213,33 @@ public class SmtpProcess implements ServerProcess {
                     socket.getLocalAddress().getHostName(),
                     socket.getInetAddress().getHostName());
               } catch (Exception e) {
-                e.printStackTrace();
-              }
-            } else if (bTransfer) {
-              logger.log(Level.INFO, "transferList:" + transferList);
-              for (String address : transferList) {
-                // 転送処理を実行する。
-                logger.log(Level.INFO, "transfer:" + address);
-                String[] addresses = address.split("@");
-                String[] hosts = lookupMailHosts(addresses[1]);
-                boolean send = false;
-                for (String mxHost : hosts) {
-
-                  MailSender.sendMail(
-                      parameter.get("host"),
-                      mxHost,
-                      address,
-                      mail.getData(),
-                      parameter.getFile("dkim"),
-                      parameter.get("dkimSelector"));
-                  send = true;
-                  break;
-                }
-                // MXで送信できなかった場合は、ホスト名に送信する
-                if (!send) {
-                  MailSender.sendMail(
-                      parameter.get("host"),
-                      addresses[1],
-                      address,
-                      mail.getData(),
-                      parameter.getFile("dkim"),
-                      parameter.get("dkimSelector"));
-                }
+                logger.log(Level.WARNING, "spam copy failed", e);
               }
             } else {
-              // メッセージコピー処理
-              try {
-                mail.copy(
-                    boxSet,
-                    socket.getLocalAddress().getHostName(),
-                    socket.getInetAddress().getHostName());
-              } catch (Exception e) {
-                e.printStackTrace();
+              // ローカル宛てと転送宛てが混在していても、それぞれ配送する
+              if (!boxSet.isEmpty()) {
+                try {
+                  mail.copy(
+                      boxSet,
+                      socket.getLocalAddress().getHostName(),
+                      socket.getInetAddress().getHostName());
+                } catch (Exception e) {
+                  logger.log(Level.WARNING, "copy failed", e);
+                  failure = e;
+                }
+              }
+              if (bTransfer) {
+                logger.log(Level.INFO, "transferList:" + transferList);
+                try {
+                  transfer();
+                } catch (Exception e) {
+                  logger.log(Level.WARNING, "transfer failed", e);
+                  if (failure == null) {
+                    failure = e;
+                  } else {
+                    failure.addSuppressed(e);
+                  }
+                }
               }
             }
             mail.delete();
@@ -222,42 +248,56 @@ public class SmtpProcess implements ServerProcess {
 
             if (bSpam) {
               SmtpUtil.recieveLine(ps, "550");
+            } else if (failure != null) {
+              // 配送できていないため250は返さず、送信元に再送/失敗を判断させる
+              SmtpUtil.recieveLine(
+                  ps, isPermanentFailure(failure) ? Constants.RECV_554 : Constants.RECV_451);
             } else {
               SmtpUtil.recieveLine(ps, Constants.RECV_250_OK);
             }
             init();
-          } else if (!line.isEmpty() && line.charAt(0) == '.') {
-            writer.write(line.substring(1));
-            writer.write("\r\n");
+          } else if (bOverSize) {
+            // サイズ超過後は終端まで破棄する
           } else {
-            // メッセージ本文
-            // 禁止文字が含まれる場合は、迷惑メールに追加
-            Matcher matcher = Constants.pattern.matcher(line);
-            if (matcher.find()) {
-              bSpam = true;
+            dataSize += line.length() + 2L;
+            if (dataSize > maxSize) {
+              bOverSize = true;
+            } else if (!bContinuation && !line.isEmpty() && line.charAt(0) == '.') {
+              writer.write(line.substring(1));
+              writer.write("\r\n");
+            } else {
+              // メッセージ本文
+              // 禁止文字が含まれる場合は、迷惑メールに追加
+              Matcher matcher = Constants.pattern.matcher(line);
+              if (matcher.find()) {
+                bSpam = true;
+              }
+              writer.write(line);
+              writer.write("\r\n");
             }
-            writer.write(line);
-            writer.write("\r\n");
           }
         } else if ((SmtpUtil.isEhlo(line) || SmtpUtil.isHelo(line))) {
           bHelo = true;
-          String[] lines = line.split(" +");
-          helo = lines[1];
           if (parameter.is("transfer")) {
             SmtpUtil.recieveLine(
                 ps, Constants.RECV_250, "-", parameter.get("host"), " Hello ", senderAddress);
+            SmtpUtil.recieveLine(ps, Constants.RECV_250, "-SIZE ", String.valueOf(maxSize));
             if (!(socket instanceof SSLSocket) && hasKeyStore()) {
-              SmtpUtil.recieveLine(ps, Constants.RECV_250, "-STARTTLS");
+              // STARTTLS完了までAUTHは広告しない
+              SmtpUtil.recieveLine(ps, Constants.RECV_250, " STARTTLS");
+            } else {
+              SmtpUtil.recieveLine(ps, Constants.RECV_250, " AUTH ", authMechanisms());
             }
-            SmtpUtil.recieveLine(ps, Constants.RECV_250, " AUTH LOGIN"); // TODO CRAM-MD5も追加したい
           } else {
 
             if ((socket instanceof SSLSocket) || !hasKeyStore()) {
               SmtpUtil.recieveLine(
-                  ps, Constants.RECV_250, " ", parameter.get("host"), " Hello ", senderAddress);
+                  ps, Constants.RECV_250, "-", parameter.get("host"), " Hello ", senderAddress);
+              SmtpUtil.recieveLine(ps, Constants.RECV_250, " SIZE ", String.valueOf(maxSize));
             } else {
               SmtpUtil.recieveLine(
                   ps, Constants.RECV_250, "-", parameter.get("host"), " Hello ", senderAddress);
+              SmtpUtil.recieveLine(ps, Constants.RECV_250, "-SIZE ", String.valueOf(maxSize));
               SmtpUtil.recieveLine(ps, Constants.RECV_250, " STARTTLS");
             }
           }
@@ -266,39 +306,64 @@ public class SmtpProcess implements ServerProcess {
           if (hasKeyStore()) {
             SmtpUtil.recieveLine(ps, Constants.RECV_220, " Go ahead");
             socket = startTls();
-            br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            socket.setSoTimeout(
+                parameter.getInt("soTimeout", Integer.parseInt(Constants.DEFAULT_SO_TIMEOUT)));
+            br =
+                new BufferedReader(
+                    new InputStreamReader(socket.getInputStream(), StandardCharsets.ISO_8859_1));
+            lineReader = new LineReader(br);
             ps = new PrintStream(socket.getOutputStream());
           } else {
             SmtpUtil.recieveLine(ps, "502", " Command not implemented");
           }
-        } else if (SmtpUtil.isAuthLogin(line) && parameter.is("transfer")) {
-          authStatus = AuthenticationStatus.USER;
-          SmtpUtil.recieveLine(ps, Constants.RECV_334, " VXNlcm5hbWU6");
+        } else if (SmtpUtil.parseAuth(line) != null && parameter.is("transfer")) {
+          if (!(socket instanceof SSLSocket) && hasKeyStore()) {
+            SmtpUtil.recieveLine(ps, "530 Must issue a STARTTLS command first");
+          } else if (bAuth) {
+            SmtpUtil.recieveLine(ps, "503 Already authenticated");
+          } else {
+            startAuth(SmtpUtil.parseAuth(line), ps);
+          }
         } else if (SmtpUtil.isRset(line)) {
           SmtpUtil.recieveLine(ps, Constants.RECV_250_OK);
           init();
         } else if (SmtpUtil.isMailFrom(line)) {
           if (bHelo) {
-            mailFrom = line.substring(10).trim().replaceAll("[<>]", "");
-            logger.log(Level.INFO, "From email address:" + mailFrom);
-            SmtpUtil.recieveLine(ps, Constants.RECV_250_OK);
-            bMailFrom = true;
+            String[] parsed = SmtpUtil.parseAddress(line, true);
+            if (parsed == null) {
+              SmtpUtil.recieveLine(ps, Constants.RECV_501_ADDRESS);
+            } else if (isDeclaredSizeOver(line)) {
+              SmtpUtil.recieveLine(ps, Constants.RECV_552);
+            } else if (!isSenderAllowed(parsed)) {
+              logger.log(Level.WARNING, "MAIL FROM not allowed for " + authName);
+              SmtpUtil.recieveLine(ps, Constants.RECV_553_SENDER);
+            } else {
+              mailFrom = parsed[0].isEmpty() ? "" : parsed[0] + "@" + parsed[1];
+              logger.log(Level.INFO, "From email address:" + mailFrom);
+              SmtpUtil.recieveLine(ps, Constants.RECV_250_OK);
+              bMailFrom = true;
+            }
           } else {
             // エラー500
             SmtpUtil.recieveLine(ps, "451 ERROR");
           }
         } else if (SmtpUtil.isRcptTo(line)) {
-          if (bMailFrom) {
-            String[] heads = line.split(":");
-            String address = heads[1].trim().replaceAll("[<>]", "");
-            String[] addresses = address.split("@");
+          String[] addresses = bMailFrom ? SmtpUtil.parseAddress(line, false) : null;
+          if (bMailFrom && addresses == null) {
+            SmtpUtil.recieveLine(ps, Constants.RECV_501_ADDRESS);
+          } else if (bMailFrom && rcptCount >= maxRcpt) {
+            SmtpUtil.recieveLine(ps, Constants.RECV_452_TOO_MANY_RCPT);
+          } else if (bMailFrom) {
+            String address = addresses[0] + "@" + addresses[1];
             logger.log(Level.INFO, "To email address:" + address);
-            if (addresses[1].equals(parameter.get("host"))) {
-              // 宛先チェック
+            boolean local = addresses[1].equals(parameter.get("host"));
+            if (local) {
+              // 宛先チェック(今回のアドレスのみを対象にする)
+              MailBox found = null;
               if (parameter.is("memory")) {
                 for (String user : Context.singleton().getUsers()) {
                   if (addresses[0].equals(user)) {
-                    boxSet.add(new MailBox(address, Context.singleton().getMailList(user)));
+                    found = new MailBox(address, Context.singleton().getMailList(user));
                     break;
                   }
                 }
@@ -308,20 +373,24 @@ public class SmtpProcess implements ServerProcess {
                   if (box.isDirectory()) {
                     if (addresses[0].equals(box.getName())) {
                       if (mailFromCheck(box)) {
-                        boxSet.add(
+                        found =
                             MailBox.builder()
                                 .mailAddress(address)
                                 .dir(box)
                                 .webhook(parameter.is("webhook"))
-                                .build());
+                                .build();
                       }
                       break;
                     }
                   }
                 }
               }
-              if (boxSet.size() > 0) {
+              if (found != null) {
                 SmtpUtil.recieveLine(ps, Constants.RECV_250_OK);
+                // 同一アドレスの重複指定は受理するが、宛先数には数えない
+                if (boxSet.add(found)) {
+                  rcptCount++;
+                }
                 bRcptTo = true;
               } else {
                 // エラーユーザー存在しない
@@ -332,7 +401,10 @@ public class SmtpProcess implements ServerProcess {
 
               SmtpUtil.recieveLine(ps, Constants.RECV_250_OK);
               bTransfer = true;
-              transferList.add(address);
+              // 同一アドレスの重複指定は受理するが、二重送信と宛先数の加算はしない
+              if (transferList.add(address)) {
+                rcptCount++;
+              }
               bRcptTo = true;
             } else {
               // エラーホストが違う
@@ -344,24 +416,21 @@ public class SmtpProcess implements ServerProcess {
           }
         } else if (SmtpUtil.isData(line)) {
           if (bRcptTo) {
-            if (bTransfer) {
-              mail = new MemoryMail();
-            } else if (parameter.is("memory")) {
+            if (parameter.is("memory") || bTransfer && boxSet.isEmpty()) {
               mail = new MemoryMail();
             } else {
               mail =
                   new FileMail(
                       new File(
                           new File(parameter.getFile("dir"), "@rcpt"),
-                          helo.replaceAll(":", "_")
+                          // クライアント入力(HELO/MAIL FROM)はファイル名に使用しない
+                          senderAddress.replaceAll(":", "_")
                               + "_"
-                              + mailFrom
-                              + "~"
-                              + senderAddress.replaceAll(":", "_")
-                              + "_"
-                              + LocalDateTime.now().format(dateTimeFormatter) // 日付とuuid スレッド番号
+                              + LocalDateTime.now().format(dateTimeFormatter)
                               + "_"
                               + Thread.currentThread().threadId()
+                              + "_"
+                              + UUID.randomUUID()
                               + ".eml"));
             }
             writer = mail.getWriter();
@@ -385,55 +454,96 @@ public class SmtpProcess implements ServerProcess {
           SmtpUtil.recieveLine(ps, "500 Syntax error, command unrecognized");
         }
         startTime = System.currentTimeMillis();
-        line = br.readLine();
+        line = nextLine();
       }
 
+    } catch (LineTooLongException e) {
+      logger.log(Level.WARNING, "Line too long from IP:" + senderAddress);
+      if (ps != null) {
+        SmtpUtil.recieveLine(ps, Constants.RECV_500_LINE_TOO_LONG);
+      }
     } catch (IOException e) {
-      e.printStackTrace();
+      logger.log(Level.WARNING, e.getMessage(), e);
     } catch (Throwable e) {
-      e.printStackTrace();
+      logger.log(Level.SEVERE, e.getMessage(), e);
     } finally {
+      if (acquired) {
+        ConnectionLimiter.singleton().release(senderAddress);
+      }
       if (br != null) {
         try {
           br.close();
         } catch (IOException e) {
-          e.printStackTrace();
+          logger.log(Level.WARNING, e.getMessage(), e);
         }
       }
       if (ps != null) {
         ps.close();
       }
-      if (mail != null) {
-        // メッセージコピー処理
-        try {
-          mail.copy(
-              boxSet,
-              socket.getLocalAddress().getHostName(),
-              socket.getInetAddress().getHostName());
-          mail.delete();
-        } catch (Exception e) {
-          e.printStackTrace();
-        }
-        mail = null;
-      }
       if (writer != null) {
         try {
           writer.close();
         } catch (IOException e) {
-          // TODO 自動生成された catch ブロック
-          e.printStackTrace();
+          logger.log(Level.WARNING, e.getMessage(), e);
         }
+      }
+      if (mail != null) {
+        // DATA未完了(終端の.未受信)のメールは配送せず破棄する
+        mail.delete();
+        mail = null;
       }
       if (socket != null) {
         try {
           socket.close();
         } catch (Exception e) {
-          e.printStackTrace();
+          logger.log(Level.WARNING, e.getMessage(), e);
         } finally {
           socket = null;
         }
       }
     }
+  }
+
+  /**
+   * 次の行を読み込む. DATA中は上限で折り返し、それ以外は上限超過を例外とする.
+   *
+   * @return 行。終端の場合はnull
+   * @throws IOException 通信エラー、または行長超過の場合
+   */
+  private String nextLine() throws IOException {
+    bContinuation = lineReader.isFolded();
+    return lineReader.readLine(bData ? maxLine : maxCommandLine, bData);
+  }
+
+  /**
+   * MAIL FROMのSIZEパラメータで宣言されたサイズが上限を超えているか.
+   *
+   * @param line MAIL FROMコマンド行
+   * @return 上限を超えている場合はtrue
+   */
+  private boolean isDeclaredSizeOver(String line) {
+    Matcher matcher = Constants.REG_EXP_SIZE_PARAM.matcher(line);
+    if (!matcher.find()) {
+      return false;
+    }
+    try {
+      return Long.parseLong(matcher.group(1)) > maxSize;
+    } catch (NumberFormatException e) {
+      return true;
+    }
+  }
+
+  /**
+   * MAIL FROMがAUTHユーザーと整合しているか. strictFrom指定の転送モードで認証済みの場合のみ検証し、 ヌル送信元や他人のアドレスは拒否する.
+   *
+   * @param parsed MAIL FROMを解析した結果(ローカル部, ドメイン)
+   * @return 許可する場合はtrue
+   */
+  private boolean isSenderAllowed(String[] parsed) {
+    if (!bAuth || !parameter.is("transfer") || !parameter.is("strictFrom")) {
+      return true;
+    }
+    return parsed[0].equals(authName) && parsed[1].equalsIgnoreCase(parameter.get("host"));
   }
 
   /** 初期化. */
@@ -442,7 +552,12 @@ public class SmtpProcess implements ServerProcess {
     bMailFrom = false;
     bRcptTo = false;
     bData = false;
+    bOverSize = false;
+    dataSize = 0;
+    rcptCount = 0;
+    bTransfer = false;
     boxSet.clear();
+    transferList.clear();
   }
 
   public long getStartTime() {
@@ -455,7 +570,7 @@ public class SmtpProcess implements ServerProcess {
       try {
         socket.close();
       } catch (IOException e) {
-        e.printStackTrace();
+        logger.log(Level.WARNING, e.getMessage(), e);
       }
       socket = null;
     }
@@ -472,12 +587,118 @@ public class SmtpProcess implements ServerProcess {
           try {
             mailList.add(new FileMail(file));
           } catch (IOException e) {
-            e.printStackTrace();
+            logger.log(Level.WARNING, e.getMessage(), e);
           }
         }
       }
       return mailList;
     }
+  }
+
+  /**
+   * 転送先ごとにMXを優先度順に試行して転送する.
+   *
+   * @throws Exception いずれかの転送先に配送できなかった場合
+   */
+  private void transfer() throws Exception {
+    Exception failure = null;
+    for (String address : transferList) {
+      logger.log(Level.INFO, "transfer:" + address);
+      try {
+        String domain = address.substring(address.indexOf('@') + 1);
+        sendToHosts(
+            lookupMailHosts(domain),
+            mxHost ->
+                MailSender.sendMail(
+                    parameter.get("host"),
+                    mxHost,
+                    mailFrom,
+                    address,
+                    mail.getData(),
+                    parameter.getFile("dkim"),
+                    parameter.get("dkimSelector")));
+      } catch (Exception e) {
+        logger.log(Level.WARNING, "transfer failed:" + address, e);
+        if (failure == null) {
+          failure = e;
+        } else {
+          failure.addSuppressed(e);
+        }
+      }
+    }
+    if (failure != null) {
+      throw failure;
+    }
+  }
+
+  /** ホストへの送信処理. */
+  @FunctionalInterface
+  interface HostSender {
+    void send(String host) throws Exception;
+  }
+
+  /**
+   * 先頭から順にホストへ送信し、成功した時点で終了する. 一時的な失敗は次のホストを試行し、恒久的な失敗(5xx)は即座に送出する.
+   *
+   * @param hosts 優先度順のホスト一覧
+   * @param sender 送信処理
+   * @throws Exception 全ホストで失敗した場合は最後の例外、ホストがない場合はIllegalArgumentException
+   */
+  void sendToHosts(String[] hosts, HostSender sender) throws Exception {
+    if (hosts.length == 0) {
+      throw new IllegalArgumentException("no host");
+    }
+    Exception last = null;
+    for (String host : hosts) {
+      try {
+        sender.send(host);
+        return;
+      } catch (Exception e) {
+        logger.log(Level.WARNING, "send failed:" + host, e);
+        if (isPermanentFailure(e)) {
+          throw e;
+        }
+        if (last != null) {
+          e.addSuppressed(last);
+        }
+        last = e;
+      }
+    }
+    throw last;
+  }
+
+  /**
+   * 失敗が恒久的(SMTP応答コード5xx)か判定する.
+   *
+   * @param e 例外
+   * @return 恒久的な失敗の場合はtrue
+   */
+  static boolean isPermanentFailure(Throwable e) {
+    Set<Throwable> visited = new HashSet<>();
+    Deque<Throwable> queue = new ArrayDeque<>();
+    queue.add(e);
+    while (!queue.isEmpty()) {
+      Throwable t = queue.poll();
+      if (t == null || !visited.add(t)) {
+        continue;
+      }
+      int code = 0;
+      if (t instanceof SMTPSendFailedException send) {
+        code = send.getReturnCode();
+      } else if (t instanceof SMTPAddressFailedException address) {
+        code = address.getReturnCode();
+      }
+      if (code >= 500 && code < 600) {
+        return true;
+      }
+      if (t.getCause() != null) {
+        queue.add(t.getCause());
+      }
+      if (t instanceof MessagingException messaging && messaging.getNextException() != null) {
+        queue.add(messaging.getNextException());
+      }
+    }
+    return false;
   }
 
   @Override
@@ -545,14 +766,16 @@ public class SmtpProcess implements ServerProcess {
         if (all != null) {
           add = Boolean.parseBoolean(all);
         }
-        String topLevelDomain =
-            prop.getProperty("*" + mailFrom.substring(mailFrom.lastIndexOf(".")));
-        if (topLevelDomain != null) {
-          add = Boolean.parseBoolean(topLevelDomain);
-        }
-        String domain = prop.getProperty("*" + mailFrom.substring(mailFrom.indexOf('@')));
-        if (domain != null) {
-          add = Boolean.parseBoolean(domain);
+        if (!mailFrom.isEmpty()) {
+          String topLevelDomain =
+              prop.getProperty("*" + mailFrom.substring(mailFrom.lastIndexOf(".")));
+          if (topLevelDomain != null) {
+            add = Boolean.parseBoolean(topLevelDomain);
+          }
+          String domain = prop.getProperty("*" + mailFrom.substring(mailFrom.indexOf('@')));
+          if (domain != null) {
+            add = Boolean.parseBoolean(domain);
+          }
         }
         String ignore = prop.getProperty(mailFrom);
         if (ignore != null) {
@@ -599,7 +822,9 @@ public class SmtpProcess implements ServerProcess {
           KeyManagementException {
     String password = parameter.get("keyStorePass");
     KeyStore ks = KeyStore.getInstance("JKS");
-    ks.load(new FileInputStream(parameter.get("keyStoreName")), password.toCharArray());
+    try (FileInputStream fis = new FileInputStream(parameter.get("keyStoreName"))) {
+      ks.load(fis, password.toCharArray());
+    }
     KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
     kmf.init(ks, password.toCharArray());
     SSLContext sslContext = SSLContext.getInstance("TLS");
@@ -615,6 +840,110 @@ public class SmtpProcess implements ServerProcess {
     sslSocket.startHandshake();
 
     return sslSocket;
+  }
+
+  /**
+   * 現在のTLS接続のチャネルバインディングデータ(tls-server-end-point)を求める.
+   *
+   * @return バインディングデータ。TLSでない場合や、証明書のハッシュ関数を決められない場合はnull
+   */
+  byte[] channelBindingData() {
+    if (!(socket instanceof SSLSocket sslSocket)) {
+      return null;
+    }
+    return ChannelBinding.serverEndPoint(sslSocket.getSession());
+  }
+
+  /** EHLOで広告するSASL機構名(スペース区切り). 強いSCRAMを先に並べ、-PLUSは通常のSCRAMより前に並べる. */
+  private String authMechanisms() {
+    StringBuilder mechanisms = new StringBuilder();
+    if (channelBindingData() != null) {
+      for (ScramAlgorithm algorithm : ScramAlgorithm.values()) {
+        mechanisms.append(algorithm.getMechanismName()).append(MECHANISM_PLUS_SUFFIX).append(' ');
+      }
+    }
+    for (ScramAlgorithm algorithm : ScramAlgorithm.values()) {
+      mechanisms.append(algorithm.getMechanismName()).append(' ');
+    }
+    return mechanisms.append(MECHANISM_PLAIN).append(' ').append(MECHANISM_LOGIN).toString();
+  }
+
+  /** AUTHコマンドで認証を開始する. 初期応答があればそのまま1回目の応答として処理する. */
+  private void startAuth(String[] args, PrintStream ps) {
+    sasl = newMechanism(args[0]);
+    if (sasl == null) {
+      SmtpUtil.recieveLine(ps, "504 Unrecognized authentication type");
+    } else if (args[1] == null) {
+      SmtpUtil.recieveLine(
+          ps, Constants.RECV_334, " ", Base64.getEncoder().encodeToString(sasl.initialChallenge()));
+    } else {
+      authResponse(args[1], ps);
+    }
+  }
+
+  /** 機構名からSASL機構を作る. 未対応の場合はnull. */
+  private SaslMechanism newMechanism(String name) {
+    File baseDir = parameter.getFile("dir");
+    if (MECHANISM_PLAIN.equalsIgnoreCase(name)) {
+      return new PlainMechanism((user, pass) -> SmtpUtil.verifyPassword(baseDir, user, pass));
+    }
+    if (MECHANISM_LOGIN.equalsIgnoreCase(name)) {
+      return new LoginMechanism((user, pass) -> SmtpUtil.verifyPassword(baseDir, user, pass));
+    }
+    byte[] bindingData = channelBindingData();
+    boolean plus =
+        name.regionMatches(
+            true,
+            name.length() - MECHANISM_PLUS_SUFFIX.length(),
+            MECHANISM_PLUS_SUFFIX,
+            0,
+            MECHANISM_PLUS_SUFFIX.length());
+    ScramAlgorithm algorithm =
+        ScramAlgorithm.find(
+            plus ? name.substring(0, name.length() - MECHANISM_PLUS_SUFFIX.length()) : name);
+    if (algorithm == null || plus && bindingData == null) {
+      // -PLUSはTLS上でバインディングデータを提供できる場合のみ受け付ける
+      return null;
+    }
+    return new ScramMechanism(
+        algorithm,
+        (user, alg) -> SmtpUtil.findScramCredential(baseDir, user, alg),
+        plus,
+        bindingData);
+  }
+
+  /** AUTH実行中のクライアント応答(base64)を処理する. */
+  private void authResponse(String line, PrintStream ps) {
+    SaslMechanism mechanism = sasl;
+    try {
+      if ("*".equals(line)) {
+        sasl = null;
+        SmtpUtil.recieveLine(ps, "501 Authentication cancelled");
+        return;
+      }
+      // 初期応答の"="は空の応答
+      byte[] response = "=".equals(line) ? new byte[0] : Base64.getDecoder().decode(line);
+      byte[] challenge = mechanism.step(response);
+      if (!mechanism.isComplete()) {
+        SmtpUtil.recieveLine(
+            ps, Constants.RECV_334, " ", Base64.getEncoder().encodeToString(challenge));
+        return;
+      }
+      sasl = null;
+      if (SmtpUtil.resolveUserDir(parameter.getFile("dir"), mechanism.getUser()) == null) {
+        SmtpUtil.recieveLine(ps, Constants.RECV_535);
+        return;
+      }
+      authName = mechanism.getUser();
+      bAuth = true;
+      SmtpUtil.recieveLine(ps, Constants.RECV_235);
+    } catch (IllegalArgumentException e) {
+      sasl = null;
+      SmtpUtil.recieveLine(ps, "501 Invalid base64 data");
+    } catch (SaslAuthException e) {
+      sasl = null;
+      SmtpUtil.recieveLine(ps, Constants.RECV_535);
+    }
   }
 
   boolean hasKeyStore() {

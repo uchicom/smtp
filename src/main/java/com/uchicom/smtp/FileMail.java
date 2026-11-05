@@ -6,10 +6,13 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.io.UncheckedIOException;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.Set;
-import javax.mail.MessagingException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * ファイル形式のメールクラス.
@@ -17,6 +20,8 @@ import javax.mail.MessagingException;
  * @author uchicom: Shigeki Uchiyama
  */
 public class FileMail implements Mail {
+
+  private static final Logger logger = Logger.getLogger(FileMail.class.getCanonicalName());
 
   /** メールファイル */
   private File file;
@@ -39,7 +44,7 @@ public class FileMail implements Mail {
   @Override
   public Writer getWriter() throws Exception {
     return new BufferedWriter(
-        new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8));
+        new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.ISO_8859_1));
   }
 
   @Override
@@ -52,7 +57,9 @@ public class FileMail implements Mail {
   }
 
   @Override
-  public void copy(Set<MailBox> boxSet, String localHostName, String senderHostName) {
+  public void copy(Set<MailBox> boxSet, String localHostName, String senderHostName)
+      throws Exception {
+    Exception failure = null;
     for (MailBox mailBox : boxSet) {
       try {
         SmtpUtil.copyFile(
@@ -61,22 +68,38 @@ public class FileMail implements Mail {
             mailBox.getMailAddress(),
             senderHostName,
             localHostName);
+      } catch (IOException e) {
+        logger.log(Level.WARNING, "copy failed:" + mailBox.getMailAddress(), e);
+        if (failure == null) {
+          failure = e;
+        } else {
+          failure.addSuppressed(e);
+        }
+        continue;
+      }
+      // Webhookの失敗は配送の成否に影響させない
+      try {
         if (mailBox.hasWebhook()) {
           mailBox.webhook(file);
         }
-      } catch (MessagingException e) {
-        e.printStackTrace();
-      } catch (IOException e) {
-        e.printStackTrace();
       } catch (InterruptedException e) {
-        e.printStackTrace();
+        Thread.currentThread().interrupt();
+        logger.log(Level.WARNING, "webhook interrupted:" + mailBox.getMailAddress(), e);
+      } catch (Exception e) {
+        logger.log(Level.WARNING, "webhook failed:" + mailBox.getMailAddress(), e);
       }
+    }
+    if (failure != null) {
+      throw failure;
     }
   }
 
   @Override
   public String getData() {
-    // TODO 自動生成されたメソッド・スタブ
-    return null;
+    try {
+      return new String(Files.readAllBytes(file.toPath()), StandardCharsets.ISO_8859_1);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
   }
 }

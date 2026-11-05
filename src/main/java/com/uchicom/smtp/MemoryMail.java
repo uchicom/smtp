@@ -4,7 +4,9 @@ package com.uchicom.smtp;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.io.UncheckedIOException;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.util.Set;
 
 /**
@@ -22,7 +24,7 @@ public class MemoryMail implements Mail {
 
   @Override
   public Writer getWriter() throws Exception {
-    return new OutputStreamWriter(baos);
+    return new OutputStreamWriter(baos, StandardCharsets.ISO_8859_1);
   }
 
   @Override
@@ -36,8 +38,8 @@ public class MemoryMail implements Mail {
         try {
           mail.baos.write(this.baos.toByteArray());
         } catch (IOException e) {
-          // TODO 自動生成された catch ブロック
-          e.printStackTrace();
+          // ByteArrayOutputStreamへの書き込みでは発生しない
+          throw new UncheckedIOException(e);
         }
         mailBox.getMailList().add(mail);
       }
@@ -46,7 +48,7 @@ public class MemoryMail implements Mail {
 
   @Override
   public String getData() {
-    String mail = new String(baos.toByteArray());
+    String mail = new String(baos.toByteArray(), StandardCharsets.ISO_8859_1);
     return mail;
   }
 }

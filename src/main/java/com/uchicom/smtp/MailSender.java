@@ -2,6 +2,13 @@
 package com.uchicom.smtp;
 
 import com.uchicom.smtp.dkim.DkimBuilder;
+import jakarta.mail.Address;
+import jakarta.mail.Message;
+import jakarta.mail.MessagingException;
+import jakarta.mail.Session;
+import jakarta.mail.Transport;
+import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.internet.MimeMessage;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.ByteArrayInputStream;
@@ -16,13 +23,6 @@ import java.util.Base64;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.mail.Address;
-import javax.mail.Message;
-import javax.mail.MessagingException;
-import javax.mail.Session;
-import javax.mail.Transport;
-import javax.mail.internet.InternetAddress;
-import javax.mail.internet.MimeMessage;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
@@ -136,8 +136,7 @@ public class MailSender {
       rec = reader.readLine();
       logger.info("t[" + rec + "]");
     } catch (Exception e) {
-      e.printStackTrace();
-      logger.warning(e.getMessage());
+      logger.log(Level.WARNING, e.getMessage(), e);
       throw e;
     }
     logger.info("smtp host:" + host);
@@ -199,8 +198,7 @@ public class MailSender {
         logger.info("t[" + rec + "]");
         break;
       } catch (Exception e) {
-        e.printStackTrace();
-        logger.warning(e.getMessage());
+        logger.log(Level.WARNING, e.getMessage(), e);
         exception = e;
       }
       logger.info("mx!:" + host);
@@ -354,6 +352,7 @@ public class MailSender {
    *
    * @param fromHost 送信元ホスト名
    * @param toHost 送信先ホスト名
+   * @param mailFrom エンベロープ送信者(MAIL FROM)。空の場合はヌル送信元(&lt;&gt;)
    * @param toMailAddress 送信先Eメールアドレス
    * @param data 送信データ
    * @throws Exception
@@ -361,6 +360,7 @@ public class MailSender {
   public static void sendMail(
       String fromHost,
       String toHost,
+      String mailFrom,
       String toMailAddress,
       String data,
       File dkimPrivateKeyFile,
@@ -370,21 +370,15 @@ public class MailSender {
     try {
       logger.log(Level.INFO, "fromHost[" + fromHost + "]");
       logger.log(Level.INFO, "toHost[" + toHost + "]");
+      logger.log(Level.INFO, "mailFrom[" + mailFrom + "]");
       logger.log(Level.INFO, "toMailAddress[" + toMailAddress + "]");
-      Properties props = new Properties();
-      props.put("mail.smtp.host", toHost);
-      props.put("mail.smtp.port", 25);
-      props.put("mail.smtp.auth", "false");
-      props.put("mail.smtp.starttls.enable", true);
-      props.put("mail.smtp.ssl.trust", toHost);
-      props.put("mail.smtp.ssl.protocols", "TLSv1.2");
-      props.put("mail.smtp.connectiontimeout", "20000");
-      props.put("mail.smtp.timeout", "200000");
+      Properties props = createTransferProperties(toHost, mailFrom);
 
       Session session = Session.getInstance(props);
 
       MimeMessage message =
-          new MimeMessage(session, new ByteArrayInputStream(data.getBytes(StandardCharsets.UTF_8)));
+          new MimeMessage(
+              session, new ByteArrayInputStream(data.getBytes(StandardCharsets.ISO_8859_1)));
 
       if (dkimPrivateKeyFile != null) {
         addDKIMHeader(message, fromHost, dkimPrivateKeyFile, selector);
@@ -394,6 +388,27 @@ public class MailSender {
     } catch (MessagingException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  /**
+   * 転送用のJavaMail設定を作る. エンベロープ送信者はFromヘッダではなくMAIL FROMを使う.
+   *
+   * @param toHost 送信先ホスト名
+   * @param mailFrom エンベロープ送信者。null/空の場合はヌル送信元(&lt;&gt;)
+   * @return JavaMail設定
+   */
+  static Properties createTransferProperties(String toHost, String mailFrom) {
+    Properties props = new Properties();
+    props.put("mail.smtp.host", toHost);
+    props.put("mail.smtp.port", 25);
+    props.put("mail.smtp.auth", "false");
+    props.put("mail.smtp.starttls.enable", true);
+    props.put("mail.smtp.ssl.trust", toHost);
+    props.put("mail.smtp.ssl.protocols", "TLSv1.2");
+    props.put("mail.smtp.connectiontimeout", "20000");
+    props.put("mail.smtp.timeout", "200000");
+    props.put("mail.smtp.from", mailFrom == null || mailFrom.isEmpty() ? "<>" : mailFrom);
+    return props;
   }
 
   static void addDKIMHeader(
