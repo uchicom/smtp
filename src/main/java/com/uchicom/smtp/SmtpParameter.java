@@ -5,6 +5,7 @@ import com.uchicom.server.MultiSocketServer;
 import com.uchicom.server.PoolSocketServer;
 import com.uchicom.server.Server;
 import com.uchicom.server.SingleSocketServer;
+import com.uchicom.server.VirtualSocketServer;
 import com.uchicom.smtp.factory.di.DIFactory;
 import com.uchicom.util.Parameter;
 
@@ -105,6 +106,12 @@ public class SmtpParameter extends Parameter {
               });
       case "pool" ->
           new PoolSocketServer(
+              this,
+              (parameter, socket) -> {
+                return new SmtpProcess(parameter, logger, socket);
+              });
+      case "virtual" ->
+          new VirtualSocketServer(
               this,
               (parameter, socket) -> {
                 return new SmtpProcess(parameter, logger, socket);

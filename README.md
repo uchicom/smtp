@@ -14,10 +14,26 @@ mvn exec:java "-Dexec.mainClass=com.uchicom.smtp.Main"
 mvn exec:java "-Dexec.mainClass=com.uchicom.smtp.Main" "-Dexec.args=-port 8025"
 
 mvn exec:java "-Dexec.mainClass=com.uchicom.smtp.Main" "-Dexec.args=-port 8025 -keyStoreName keystore -keyStorePass changeit"
+
+mvn exec:java "-Dexec.mainClass=com.uchicom.smtp.Main" "-Dexec.args=-port 8025 -type virtual"
 ```
 ```
 mvn exec:java "-Dexec.mainClass=com.uchicom.smtp.TestMain"
 ```
+
+### サーバー種別 (-type)
+| 値 | 内容 |
+| --- | --- |
+| single (既定) | 1接続ずつ順番に処理する |
+| multi | 接続ごとにスレッドを生成して処理する |
+| pool | `-pool` で指定した数のスレッドプールで処理する |
+| virtual | 接続ごとに仮想スレッド(Virtual Thread)で処理する |
+
+`virtual`は数に上限がないため、`-maxConn` / `-maxConnPerIp`による接続制限は必須(既定値で有効)。
+処理の大半がブロッキングI/O(ソケット、DNS問合せ、転送、Webhook)なので仮想スレッドと相性がよい。
+
+- SCRAM認証は毎回PBKDF2を計算するCPU処理のため、仮想スレッドでも速くならない。認証失敗の回数制限は未実装のため、大量の認証要求には注意する。
+- 仮想スレッドは通常の`jstack`に出ない。`jcmd <pid> Thread.dump_to_file <file>`を使う。ログのスレッド名も空になる。
 
 ### 入力制限パラメータ
 既定値はGmailの受信仕様とRFC 5321に合わせています。行長は改行(CRLF)を除く文字数です。
@@ -31,6 +47,16 @@ mvn exec:java "-Dexec.mainClass=com.uchicom.smtp.TestMain"
 | -soTimeout | 300000 | コマンド待ちは最低5分 | ソケットタイムアウト(ミリ秒) |
 | -maxConn | 100 | 規定なし | 同時接続数の上限。超過時は421を返して切断 |
 | -maxConnPerIp | 10 | 規定なし | IPごとの同時接続数の上限。リバースプロキシやNAT配下では接続元が1つに見えるため、必要に応じて引き上げる |
+
+#### メモリ見積もり
+DATAは`MemoryMail`にメモリ上で溜めるため、最悪時のメモリ使用量はおおよそ`maxSize` × `maxConn`になる。
+既定値では 35,882,577バイト × 100 ≒ 3.58GB(約3.4GiB)。`-maxConn`と`-maxSize`は、ヒープ上限(`-Xmx`)に収まるように組み合わせて設定する。
+
+| maxSize | maxConn | 最悪値の目安 |
+| --- | --- | --- |
+| 35882577 (約34MiB, 既定) | 100 (既定) | 約3.4GiB |
+| 35882577 | 20 | 約0.7GiB |
+| 10485760 (10MiB) | 100 | 約1.0GiB |
 
 アドレス構文が不正な`MAIL FROM` / `RCPT TO`は501を返します。バウンスメール用のヌル送信元(`MAIL FROM:<>`)は受け付けます(`RCPT TO:<>`は501)。
 
