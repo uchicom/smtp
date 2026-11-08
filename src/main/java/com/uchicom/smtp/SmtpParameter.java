@@ -84,6 +84,10 @@ public class SmtpParameter extends Parameter {
     if (!is("soTimeout")) {
       put("soTimeout", Constants.DEFAULT_SO_TIMEOUT);
     }
+    // サーバのアイドルタイムアウト(ミリ秒). 未指定時はsoTimeoutと同じにする
+    if (!is("timeout")) {
+      put("timeout", get("soTimeout"));
+    }
     // 同時接続数上限
     if (!is("maxConn")) {
       put("maxConn", Constants.DEFAULT_MAX_CONN);

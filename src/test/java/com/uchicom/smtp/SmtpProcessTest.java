@@ -434,6 +434,15 @@ public class SmtpProcessTest {
         });
   }
 
+  @Test
+  public void getLastTimeIsNotCurrentTime() throws Exception {
+    SmtpProcess process = process();
+    long first = process.getLastTime();
+    Thread.sleep(20);
+
+    assertThat(process.getLastTime()).isEqualTo(first);
+  }
+
   private SmtpProcess process() {
     return new SmtpProcess(new SmtpParameter(new String[0]), Logger.getAnonymousLogger(), null);
   }
