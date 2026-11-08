@@ -21,6 +21,7 @@ public class SmtpParameterTest {
     assertThat(parameter.getInt("maxLine")).isEqualTo(998);
     assertThat(parameter.getInt("maxSize")).isEqualTo(35882577);
     assertThat(parameter.getInt("soTimeout")).isEqualTo(300000);
+    assertThat(parameter.getInt("timeout")).isEqualTo(300000);
     assertThat(parameter.getInt("maxConn")).isEqualTo(100);
     assertThat(parameter.getInt("maxConnPerIp")).isEqualTo(10);
   }
@@ -43,6 +44,24 @@ public class SmtpParameterTest {
 
     // test
     assertThatThrownBy(parameter::createServer).isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  public void initTimeoutFollowsSoTimeout() {
+    SmtpParameter parameter = new SmtpParameter(new String[] {"-soTimeout", "1234"});
+
+    parameter.init();
+
+    assertThat(parameter.getInt("timeout")).isEqualTo(1234);
+  }
+
+  @Test
+  public void initTimeoutSpecified() {
+    SmtpParameter parameter = new SmtpParameter(new String[] {"-timeout", "99"});
+
+    parameter.init();
+
+    assertThat(parameter.getInt("timeout")).isEqualTo(99);
   }
 
   @Test

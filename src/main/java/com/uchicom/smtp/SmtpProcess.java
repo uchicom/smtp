@@ -67,7 +67,10 @@ public class SmtpProcess implements ServerProcess {
 
   private DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss.SSS");
   private Parameter parameter;
-  private Socket socket;
+  private volatile Socket socket;
+
+  /** 最終アクセス時刻. 監視スレッドから参照されるためvolatile. */
+  private volatile long lastTime = System.currentTimeMillis();
 
   private boolean bHelo;
   private boolean bMailFrom;
@@ -512,7 +515,9 @@ public class SmtpProcess implements ServerProcess {
    */
   private String nextLine() throws IOException {
     bContinuation = lineReader.isFolded();
-    return lineReader.readLine(bData ? maxLine : maxCommandLine, bData);
+    String line = lineReader.readLine(bData ? maxLine : maxCommandLine, bData);
+    lastTime = System.currentTimeMillis();
+    return line;
   }
 
   /**
@@ -566,13 +571,14 @@ public class SmtpProcess implements ServerProcess {
 
   public void forceClose() {
     logger.info("forceClose!");
-    if (socket != null && socket.isConnected()) {
+    // 別スレッドから呼ばれるため、socketはnullにせず(execute側のNPE防止)、closeの冪等性に任せる
+    Socket target = socket;
+    if (target != null && !target.isClosed()) {
       try {
-        socket.close();
+        target.close();
       } catch (IOException e) {
         logger.log(Level.WARNING, e.getMessage(), e);
       }
-      socket = null;
     }
   }
 
@@ -703,7 +709,7 @@ public class SmtpProcess implements ServerProcess {
 
   @Override
   public long getLastTime() {
-    return System.currentTimeMillis();
+    return lastTime;
   }
 
   /**
