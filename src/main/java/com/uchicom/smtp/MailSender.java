@@ -355,6 +355,9 @@ public class MailSender {
    * @param mailFrom エンベロープ送信者(MAIL FROM)。空の場合はヌル送信元(&lt;&gt;)
    * @param toMailAddress 送信先Eメールアドレス
    * @param data 送信データ
+   * @param dkimPrivateKeyFile DKIM秘密鍵ファイル
+   * @param selector DKIMセレクター
+   * @param checkServerIdentity サーバー証明書のホスト名を検証する場合はtrue
    * @throws Exception
    */
   public static void sendMail(
@@ -364,7 +367,8 @@ public class MailSender {
       String toMailAddress,
       String data,
       File dkimPrivateKeyFile,
-      String selector)
+      String selector,
+      boolean checkServerIdentity)
       throws Exception {
 
     try {
@@ -372,7 +376,7 @@ public class MailSender {
       logger.log(Level.INFO, "toHost[" + toHost + "]");
       logger.log(Level.INFO, "mailFrom[" + mailFrom + "]");
       logger.log(Level.INFO, "toMailAddress[" + toMailAddress + "]");
-      Properties props = createTransferProperties(toHost, mailFrom);
+      Properties props = createTransferProperties(toHost, mailFrom, checkServerIdentity);
 
       Session session = Session.getInstance(props);
 
@@ -398,6 +402,19 @@ public class MailSender {
    * @return JavaMail設定
    */
   static Properties createTransferProperties(String toHost, String mailFrom) {
+    return createTransferProperties(toHost, mailFrom, true);
+  }
+
+  /**
+   * 転送用のJavaMail設定を作る. エンベロープ送信者はFromヘッダではなくMAIL FROMを使う.
+   *
+   * @param toHost 送信先ホスト名
+   * @param mailFrom エンベロープ送信者。null/空の場合はヌル送信元(&lt;&gt;)
+   * @param checkServerIdentity サーバー証明書のホスト名を検証する場合はtrue
+   * @return JavaMail設定
+   */
+  static Properties createTransferProperties(
+      String toHost, String mailFrom, boolean checkServerIdentity) {
     Properties props = new Properties();
     props.put("mail.smtp.host", toHost);
     props.put("mail.smtp.port", 25);
@@ -405,6 +422,7 @@ public class MailSender {
     props.put("mail.smtp.starttls.enable", true);
     props.put("mail.smtp.ssl.trust", toHost);
     props.put("mail.smtp.ssl.protocols", "TLSv1.2");
+    props.put("mail.smtp.ssl.checkserveridentity", String.valueOf(checkServerIdentity));
     props.put("mail.smtp.connectiontimeout", "20000");
     props.put("mail.smtp.timeout", "200000");
     props.put("mail.smtp.from", mailFrom == null || mailFrom.isEmpty() ? "<>" : mailFrom);
