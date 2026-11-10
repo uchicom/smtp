@@ -622,7 +622,8 @@ public class SmtpProcess implements ServerProcess {
                     address,
                     mail.getData(),
                     parameter.getFile("dkim"),
-                    parameter.get("dkimSelector")));
+                    parameter.get("dkimSelector"),
+                    !"false".equalsIgnoreCase(parameter.get("checkServerIdentity"))));
       } catch (Exception e) {
         logger.log(Level.WARNING, "transfer failed:" + address, e);
         if (failure == null) {
