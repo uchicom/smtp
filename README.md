@@ -48,6 +48,17 @@ mvn exec:java "-Dexec.mainClass=com.uchicom.smtp.TestMain"
 | -maxConn | 100 | 規定なし | 同時接続数の上限。超過時は421を返して切断 |
 | -maxConnPerIp | 10 | 規定なし | IPごとの同時接続数の上限。リバースプロキシやNAT配下では接続元が1つに見えるため、必要に応じて引き上げる |
 
+### 転送時のTLS証明書検証 (-checkServerIdentity)
+`-transfer true`で転送する際、STARTTLS後にサーバー証明書のホスト名(SAN)が接続先ホスト名と一致するかを検証する(既定: `true`)。
+
+| 値 | 内容 |
+| --- | --- |
+| true (既定) | 証明書のホスト名を検証する。不一致の場合は転送に失敗する |
+| false | 証明書のホスト名を検証しない |
+
+独自ドメイン宛てでも共通証明書(例: さくらインターネットの`*.sakura.ne.jp`)で応答するサーバーへ転送する場合、`No subject alternative DNS name matching ... found`で失敗する。その場合は`-checkServerIdentity false`を指定する。
+`false`にすると暗号化は行われるが、接続先のなりすまし(中間者攻撃)を検出できなくなる。
+
 #### メモリ見積もり
 DATAは`MemoryMail`にメモリ上で溜めるため、最悪時のメモリ使用量はおおよそ`maxSize` × `maxConn`になる。
 既定値では 35,882,577バイト × 100 ≒ 3.58GB(約3.4GiB)。`-maxConn`と`-maxSize`は、ヒープ上限(`-Xmx`)に収まるように組み合わせて設定する。

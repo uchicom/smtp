@@ -64,6 +64,10 @@ public class SmtpParameter extends Parameter {
     if (!is("dkimSelector")) {
       put("dkimSelector", Constants.DEFAULT_DKIM_SELECTOR);
     }
+    // 転送時のサーバー証明書ホスト名検証(true:検証する, false:検証しない)
+    if (!is("checkServerIdentity")) {
+      put("checkServerIdentity", "true");
+    }
     // 本文行長上限(CRLFを除く文字数)
     if (!is("maxLine")) {
       put("maxLine", Constants.DEFAULT_MAX_LINE);

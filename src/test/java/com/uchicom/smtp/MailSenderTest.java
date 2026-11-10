@@ -25,4 +25,20 @@ public class MailSenderTest {
                 .getProperty("mail.smtp.from"))
         .isEqualTo("<>");
   }
+
+  @Test
+  public void serverIdentityIsCheckedByDefault() {
+    assertThat(
+            MailSender.createTransferProperties("mx.example.com", "a@example.com")
+                .getProperty("mail.smtp.ssl.checkserveridentity"))
+        .isEqualTo("true");
+  }
+
+  @Test
+  public void serverIdentityCheckCanBeDisabled() {
+    assertThat(
+            MailSender.createTransferProperties("mx.example.com", "a@example.com", false)
+                .getProperty("mail.smtp.ssl.checkserveridentity"))
+        .isEqualTo("false");
+  }
 }
